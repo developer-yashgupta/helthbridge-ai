@@ -62,6 +62,30 @@ declare module 'react' {
     rows?: number;
     cols?: number;
   }
+  
+  // Default export
+  const React: {
+    useState: typeof useState;
+    useEffect: typeof useEffect;
+    useCallback: typeof useCallback;
+    useMemo: typeof useMemo;
+    useRef: typeof useRef;
+    createContext: typeof createContext;
+    useContext: typeof useContext;
+    Component: typeof Component;
+    ReactNode: ReactNode;
+    ComponentType: ComponentType;
+    FormEvent: FormEvent;
+    ChangeEvent: ChangeEvent;
+    MouseEvent: MouseEvent;
+    HTMLAttributes: HTMLAttributes<any>;
+    InputHTMLAttributes: InputHTMLAttributes<any>;
+    ButtonHTMLAttributes: ButtonHTMLAttributes<any>;
+    LabelHTMLAttributes: LabelHTMLAttributes<any>;
+    TextareaHTMLAttributes: TextareaHTMLAttributes<any>;
+  };
+  
+  export default React;
 }
 
 declare module 'react-dom' {
@@ -346,4 +370,98 @@ declare module '@/components/ui/dialog' {
   export const DialogDescription: ComponentType<DialogDescriptionProps>;
   export const DialogTrigger: ComponentType<{ children?: React.ReactNode; [key: string]: any }>;
   export const DialogFooter: ComponentType<{ children?: React.ReactNode; className?: string; [key: string]: any }>;
+}
+
+// Additional UI components needed by the project
+declare module '@/components/ui/form' {
+  import { ComponentType } from 'react';
+  
+  interface FormProps {
+    children?: React.ReactNode;
+    [key: string]: any;
+  }
+  
+  interface FormFieldProps {
+    control?: any;
+    name: string;
+    render: (props: { field: any }) => React.ReactNode;
+  }
+  
+  interface FormItemProps {
+    children?: React.ReactNode;
+    className?: string;
+  }
+  
+  interface FormLabelProps {
+    children?: React.ReactNode;
+    className?: string;
+  }
+  
+  interface FormControlProps {
+    children?: React.ReactNode;
+  }
+  
+  interface FormMessageProps {
+    className?: string;
+  }
+  
+  export const Form: ComponentType<FormProps>;
+  export const FormField: ComponentType<FormFieldProps>;
+  export const FormItem: ComponentType<FormItemProps>;
+  export const FormLabel: ComponentType<FormLabelProps>;
+  export const FormControl: ComponentType<FormControlProps>;
+  export const FormMessage: ComponentType<FormMessageProps>;
+}
+
+declare module '@/components/ui/select' {
+  import { ComponentType } from 'react';
+  
+  interface SelectProps {
+    onValueChange?: (value: string) => void;
+    defaultValue?: string;
+    children?: React.ReactNode;
+  }
+  
+  interface SelectTriggerProps {
+    children?: React.ReactNode;
+    className?: string;
+  }
+  
+  interface SelectValueProps {
+    placeholder?: string;
+  }
+  
+  interface SelectContentProps {
+    children?: React.ReactNode;
+  }
+  
+  interface SelectItemProps {
+    value: string;
+    children?: React.ReactNode;
+  }
+  
+  export const Select: ComponentType<SelectProps>;
+  export const SelectTrigger: ComponentType<SelectTriggerProps>;
+  export const SelectValue: ComponentType<SelectValueProps>;
+  export const SelectContent: ComponentType<SelectContentProps>;
+  export const SelectItem: ComponentType<SelectItemProps>;
+}
+
+declare module '@/hooks/use-toast' {
+  interface ToastProps {
+    title?: string;
+    description?: string;
+    variant?: 'default' | 'destructive';
+  }
+  
+  export function useToast(): {
+    toast: (props: ToastProps) => void;
+  };
+}
+
+declare module '@/lib/types' {
+  export type Role = 'citizen' | 'asha' | 'clinical' | 'admin';
+  export const roles: Role[];
+  export const roleRoutes: Record<Role, string>;
+  export const roleDisplayNames: Record<Role, string>;
 }
