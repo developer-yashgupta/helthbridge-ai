@@ -161,7 +161,6 @@ npm run demo
 - **Python + Flask** - AI service layer
 - **TensorFlow** - Machine learning models
 - **IndicBERT** - Multilingual NLP
-- **OpenCV** - Computer vision
 - **scikit-learn** - Classical ML algorithms
 
 ### Infrastructure
@@ -266,8 +265,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation** - Comprehensive guides and tutorials
 
 ### Professional Support
-- **Email**: support@healthbridge.ai
-- **Phone**: +91-11-4567-8900
+- **Email**: 
+- **Phone**: 
 - **Website**: https://healthbridge.ai
 
 ### Security Issues
