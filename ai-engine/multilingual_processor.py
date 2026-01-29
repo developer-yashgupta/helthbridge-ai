@@ -1,306 +1,300 @@
-import json
 import logging
-from datetime import datetime
+from typing import List, Dict, Any
+import re
 
 logger = logging.getLogger(__name__)
 
 class MultilingualProcessor:
+    """Multilingual text processing for symptom analysis"""
+    
     def __init__(self):
-        self.supported_languages = ['hi', 'en', 'ta', 'te', 'bn', 'gu', 'mr']
-        
-        # Translation dictionaries (simplified for demo)
+        # Translation dictionaries for common symptoms
         self.translations = {
-            'hi': {
+            'hi_to_en': {
+                'बुखार': 'fever',
+                'सिरदर्द': 'headache',
+                'खांसी': 'cough',
+                'सांस लेने में तकलीफ': 'difficulty_breathing',
+                'छाती में दर्द': 'chest_pain',
+                'पेट दर्द': 'stomach_pain',
+                'उल्टी': 'vomiting',
+                'दस्त': 'diarrhea',
+                'कमजोरी': 'fatigue',
+                'गले में खराश': 'sore_throat',
+                'बदन दर्द': 'body_ache',
+                'चक्कर आना': 'dizziness',
+                'नाक बहना': 'runny_nose',
+                'तेज बुखार': 'high_fever',
+                'सांस फूलना': 'shortness_of_breath'
+            },
+            'en_to_hi': {
                 'fever': 'बुखार',
                 'headache': 'सिरदर्द',
                 'cough': 'खांसी',
-                'chest_pain': 'छाती में दर्द',
                 'difficulty_breathing': 'सांस लेने में तकलीफ',
-                'abdominal_pain': 'पेट दर्द',
+                'chest_pain': 'छाती में दर्द',
+                'stomach_pain': 'पेट दर्द',
                 'vomiting': 'उल्टी',
                 'diarrhea': 'दस्त',
                 'fatigue': 'कमजोरी',
                 'sore_throat': 'गले में खराश',
-                
-                # Risk level translations
-                'red': 'उच्च जोखिम',
-                'amber': 'मध्यम जोखिम',
-                'green': 'कम जोखिम',
-                
-                # Common phrases
-                'immediate_care': 'तुरंत चिकित्सा सहायता लें',
-                'consult_asha': 'ASHA कार्यकर्ता से मिलें',
-                'home_care': 'घरेलू उपचार करें',
-                'monitor_symptoms': 'लक्षणों पर नजर रखें'
-            },
-            'en': {
-                'fever': 'fever',
-                'headache': 'headache',
-                'cough': 'cough',
-                'chest_pain': 'chest pain',
-                'difficulty_breathing': 'difficulty breathing',
-                'abdominal_pain': 'abdominal pain',
-                'vomiting': 'vomiting',
-                'diarrhea': 'diarrhea',
-                'fatigue': 'fatigue',
-                'sore_throat': 'sore throat',
-                
-                'red': 'high risk',
-                'amber': 'medium risk',
-                'green': 'low risk',
-                
-                'immediate_care': 'Seek immediate medical attention',
-                'consult_asha': 'Consult ASHA worker',
-                'home_care': 'Take home care',
-                'monitor_symptoms': 'Monitor symptoms'
+                'body_ache': 'बदन दर्द',
+                'dizziness': 'चक्कर आना',
+                'runny_nose': 'नाक बहना',
+                'high_fever': 'तेज बुखार',
+                'shortness_of_breath': 'सांस फूलना'
             }
         }
         
-        # Reverse mappings for symptom recognition
-        self.symptom_mappings = {}
-        for lang, translations in self.translations.items():
-            self.symptom_mappings[lang] = {v: k for k, v in translations.items()}
+        # Language detection patterns
+        self.language_patterns = {
+            'hi': re.compile(r'[\u0900-\u097F]'),  # Devanagari script
+            'en': re.compile(r'[a-zA-Z]'),
+            'ta': re.compile(r'[\u0B80-\u0BFF]'),  # Tamil script
+            'te': re.compile(r'[\u0C00-\u0C7F]'),  # Telugu script
+        }
         
         logger.info("Multilingual processor initialized")
     
-    def process_voice(self, audio_data, language='hi'):
-        """Process voice input and convert to symptoms"""
-        try:
-            # Mock voice-to-text conversion
-            # In real implementation, use speech recognition APIs
-            
-            mock_transcriptions = {
-                'hi': 'मुझे बुखार और सिरदर्द है',
-                'en': 'I have fever and headache'
-            }
-            
-            text = mock_transcriptions.get(language, mock_transcriptions['hi'])
-            
-            # Extract symptoms from text
-            symptoms = self._extract_symptoms_from_text(text, language)
-            
-            return symptoms
-            
-        except Exception as e:
-            logger.error(f"Voice processing error: {str(e)}")
-            return []
+    def detect_language(self, text: str) -> str:
+        """Detect the language of input text"""
+        if not text:
+            return 'en'
+        
+        # Count characters for each language
+        language_scores = {}
+        
+        for lang, pattern in self.language_patterns.items():
+            matches = pattern.findall(text)
+            language_scores[lang] = len(matches)
+        
+        # Return language with highest score
+        detected_lang = max(language_scores, key=language_scores.get)
+        
+        # Default to English if no clear winner
+        if language_scores[detected_lang] == 0:
+            return 'en'
+        
+        return detected_lang
     
-    def process_text(self, text_input, language='hi'):
-        """Process text input and extract symptoms"""
-        try:
-            if isinstance(text_input, list):
-                # Already a list of symptoms
-                return [self._normalize_symptom(s, language) for s in text_input]
-            
-            # Extract symptoms from text
-            symptoms = self._extract_symptoms_from_text(text_input, language)
-            return symptoms
-            
-        except Exception as e:
-            logger.error(f"Text processing error: {str(e)}")
-            return []
+    def process_text(self, symptoms: List[str], language: str = 'en') -> List[str]:
+        """Process text symptoms and normalize to English"""
+        processed_symptoms = []
+        
+        for symptom in symptoms:
+            if isinstance(symptom, str):
+                # Detect language if not specified
+                if language == 'auto':
+                    detected_lang = self.detect_language(symptom)
+                else:
+                    detected_lang = language
+                
+                # Translate to English if needed
+                if detected_lang == 'hi':
+                    translated = self.translate_symptom_hi_to_en(symptom)
+                    processed_symptoms.append(translated)
+                else:
+                    # Normalize English symptoms
+                    normalized = self.normalize_english_symptom(symptom)
+                    processed_symptoms.append(normalized)
+            else:
+                processed_symptoms.append(str(symptom))
+        
+        return processed_symptoms
     
-    def _extract_symptoms_from_text(self, text, language):
-        """Extract symptoms from natural language text"""
-        text = text.lower()
-        symptoms = []
+    def translate_symptom_hi_to_en(self, symptom: str) -> str:
+        """Translate Hindi symptom to English"""
+        symptom = symptom.strip().lower()
         
-        # Get symptom mappings for the language
-        mappings = self.symptom_mappings.get(language, {})
+        # Direct translation lookup
+        if symptom in self.translations['hi_to_en']:
+            return self.translations['hi_to_en'][symptom]
         
-        # Look for symptom keywords
-        for symptom_text, symptom_key in mappings.items():
-            if symptom_text in text:
-                symptoms.append(symptom_key)
+        # Partial matching for compound symptoms
+        for hindi_term, english_term in self.translations['hi_to_en'].items():
+            if hindi_term in symptom:
+                return english_term
         
-        # If no symptoms found, try common patterns
-        if not symptoms:
-            symptoms = self._fallback_symptom_extraction(text, language)
-        
-        return list(set(symptoms))  # Remove duplicates
+        # If no translation found, return original
+        logger.warning(f"No translation found for Hindi symptom: {symptom}")
+        return symptom
     
-    def _normalize_symptom(self, symptom, language):
-        """Normalize symptom to English key"""
-        mappings = self.symptom_mappings.get(language, {})
-        return mappings.get(symptom.lower(), symptom)
+    def normalize_english_symptom(self, symptom: str) -> str:
+        """Normalize English symptom terms"""
+        symptom = symptom.strip().lower()
+        
+        # Common variations mapping
+        normalizations = {
+            'temperature': 'fever',
+            'hot': 'fever',
+            'chills': 'fever',
+            'head pain': 'headache',
+            'migraine': 'headache',
+            'coughing': 'cough',
+            'chest hurt': 'chest_pain',
+            'breathing problem': 'difficulty_breathing',
+            'shortness of breath': 'difficulty_breathing',
+            'stomach ache': 'stomach_pain',
+            'belly pain': 'stomach_pain',
+            'abdominal pain': 'stomach_pain',
+            'throw up': 'vomiting',
+            'nausea': 'vomiting',
+            'loose motions': 'diarrhea',
+            'tired': 'fatigue',
+            'weakness': 'fatigue',
+            'exhausted': 'fatigue',
+            'throat pain': 'sore_throat',
+            'swallowing pain': 'sore_throat'
+        }
+        
+        # Apply normalizations
+        for variation, normalized in normalizations.items():
+            if variation in symptom:
+                return normalized
+        
+        # Replace spaces with underscores for consistency
+        return symptom.replace(' ', '_')
     
-    def _fallback_symptom_extraction(self, text, language):
-        """Fallback symptom extraction using common patterns"""
-        symptoms = []
+    def process_voice(self, audio_data: Any, language: str = 'hi') -> List[str]:
+        """Process voice input (mock implementation)"""
+        # Mock voice-to-text conversion
+        mock_transcriptions = {
+            'hi': ['मुझे बुखार और सिरदर्द है', 'पेट में दर्द हो रहा है', 'खांसी आ रही है'],
+            'en': ['I have fever and headache', 'stomach pain', 'coughing']
+        }
         
-        if language == 'hi':
-            patterns = {
-                'बुखार': 'fever',
-                'सिर': 'headache',
-                'खांसी': 'cough',
-                'छाती': 'chest_pain',
-                'सांस': 'difficulty_breathing',
-                'पेट': 'abdominal_pain',
-                'उल्टी': 'vomiting',
-                'दस्त': 'diarrhea'
-            }
-        else:
-            patterns = {
-                'fever': 'fever',
-                'head': 'headache',
-                'cough': 'cough',
-                'chest': 'chest_pain',
-                'breath': 'difficulty_breathing',
-                'stomach': 'abdominal_pain',
-                'vomit': 'vomiting',
-                'diarrhea': 'diarrhea'
-            }
+        # Return mock transcription
+        transcription = mock_transcriptions.get(language, ['fever', 'headache'])[0]
         
-        for pattern, symptom in patterns.items():
-            if pattern in text:
-                symptoms.append(symptom)
+        # Extract symptoms from transcription
+        symptoms = self.extract_symptoms_from_text(transcription, language)
         
         return symptoms
     
-    def translate_response(self, triage_result, target_language):
-        """Translate triage response to target language"""
-        try:
-            if target_language not in self.supported_languages:
-                target_language = 'en'  # Fallback to English
-            
-            translations = self.translations.get(target_language, self.translations['en'])
-            
-            # Translate risk level
-            risk_level = triage_result.get('riskLevel', 'green')
-            translated_risk = translations.get(risk_level, risk_level)
-            
-            # Generate explanation based on risk level
-            explanation = self._generate_explanation(risk_level, target_language)
-            
-            # Generate recommendations
-            recommendations = self._generate_recommendations(risk_level, target_language)
-            
-            # Determine next steps and urgency
-            next_steps, urgency, wait_time = self._determine_next_steps(risk_level)
-            
-            return {
-                'riskLevel': risk_level,
-                'riskScore': triage_result.get('riskScore', 50),
-                'explanation': explanation,
-                'recommendations': recommendations,
-                'nextSteps': next_steps,
-                'urgency': urgency,
-                'estimatedWaitTime': wait_time
-            }
-            
-        except Exception as e:
-            logger.error(f"Translation error: {str(e)}")
-            return self._default_translated_response(target_language)
-    
-    def _generate_explanation(self, risk_level, language):
-        """Generate explanation based on risk level and language"""
-        explanations = {
-            'hi': {
-                'red': 'आपके लक्षण गंभीर हैं। तुरंत चिकित्सा सहायता की आवश्यकता है।',
-                'amber': 'आपके लक्षणों पर ध्यान देने की जरूरत है। जल्दी इलाज कराएं।',
-                'green': 'आपके लक्षण सामान्य लगते हैं। घरेलू उपचार से ठीक हो सकते हैं।'
-            },
-            'en': {
-                'red': 'Your symptoms are serious. Immediate medical attention is required.',
-                'amber': 'Your symptoms need attention. Seek medical care soon.',
-                'green': 'Your symptoms appear mild. Home care may be sufficient.'
-            }
-        }
+    def extract_symptoms_from_text(self, text: str, language: str = 'en') -> List[str]:
+        """Extract symptoms from free text"""
+        symptoms = []
+        text = text.lower()
         
-        return explanations.get(language, explanations['en']).get(risk_level, '')
-    
-    def _generate_recommendations(self, risk_level, language):
-        """Generate recommendations based on risk level and language"""
-        recommendations = {
-            'hi': {
-                'red': [
-                    'तुरंत नजदीकी अस्पताल जाएं',
-                    '108 पर एम्बुलेंस बुलाएं',
-                    'किसी को साथ ले जाएं'
-                ],
-                'amber': [
-                    'ASHA कार्यकर्ता से संपर्क करें',
-                    'नजदीकी PHC में जांच कराएं',
-                    'लक्षणों पर नजर रखें'
-                ],
-                'green': [
-                    'आराम करें और पानी पिएं',
-                    'स्वस्थ भोजन लें',
-                    'यदि बिगड़े तो डॉक्टर से मिलें'
-                ]
-            },
-            'en': {
-                'red': [
-                    'Go to nearest hospital immediately',
-                    'Call ambulance (108)',
-                    'Take someone with you'
-                ],
-                'amber': [
-                    'Contact ASHA worker',
-                    'Visit nearest PHC for checkup',
-                    'Monitor your symptoms'
-                ],
-                'green': [
-                    'Rest and drink plenty of water',
-                    'Eat healthy food',
-                    'See doctor if symptoms worsen'
-                ]
-            }
-        }
-        
-        return recommendations.get(language, recommendations['en']).get(risk_level, [])
-    
-    def _determine_next_steps(self, risk_level):
-        """Determine next steps, urgency, and wait time"""
-        if risk_level == 'red':
-            return ['emergency_care'], 'immediate', '0 minutes'
-        elif risk_level == 'amber':
-            return ['asha_visit', 'phc_consultation'], 'moderate', '2-4 hours'
-        else:
-            return ['home_care', 'monitor'], 'low', 'self-care'
-    
-    def _default_translated_response(self, language):
-        """Default response when translation fails"""
         if language == 'hi':
-            return {
-                'riskLevel': 'green',
-                'riskScore': 30,
-                'explanation': 'कृपया अपने लक्षण स्पष्ट रूप से बताएं।',
-                'recommendations': ['ASHA कार्यकर्ता से सलाह लें'],
-                'nextSteps': ['consult_asha'],
-                'urgency': 'low',
-                'estimatedWaitTime': '1-2 hours'
-            }
+            # Hindi symptom extraction
+            for hindi_term, english_term in self.translations['hi_to_en'].items():
+                if hindi_term in text:
+                    symptoms.append(english_term)
         else:
-            return {
-                'riskLevel': 'green',
-                'riskScore': 30,
-                'explanation': 'Please describe your symptoms clearly.',
-                'recommendations': ['Consult with ASHA worker'],
-                'nextSteps': ['consult_asha'],
-                'urgency': 'low',
-                'estimatedWaitTime': '1-2 hours'
-            }
+            # English symptom extraction
+            symptom_keywords = [
+                'fever', 'headache', 'cough', 'chest_pain', 'difficulty_breathing',
+                'stomach_pain', 'vomiting', 'diarrhea', 'fatigue', 'sore_throat',
+                'body_ache', 'dizziness', 'runny_nose'
+            ]
+            
+            for keyword in symptom_keywords:
+                if keyword.replace('_', ' ') in text or keyword in text:
+                    symptoms.append(keyword)
+        
+        return list(set(symptoms))  # Remove duplicates
     
-    def translate(self, text, source_lang, target_lang):
-        """Simple translation between supported languages"""
-        # Mock translation - in production, use Google Translate API or similar
+    def translate(self, text: str, source_lang: str, target_lang: str) -> str:
+        """Translate text between languages"""
         if source_lang == target_lang:
             return text
         
-        # Simple keyword-based translation
-        source_dict = self.translations.get(source_lang, {})
-        target_dict = self.translations.get(target_lang, {})
+        # Simple word-by-word translation for symptoms
+        if source_lang == 'hi' and target_lang == 'en':
+            for hindi_word, english_word in self.translations['hi_to_en'].items():
+                text = text.replace(hindi_word, english_word)
+        elif source_lang == 'en' and target_lang == 'hi':
+            for english_word, hindi_word in self.translations['en_to_hi'].items():
+                text = text.replace(english_word, hindi_word)
         
-        # Reverse lookup
-        reverse_source = {v: k for k, v in source_dict.items()}
+        return text
+    
+    def translate_response(self, response: Dict, target_language: str) -> Dict:
+        """Translate analysis response to target language"""
+        if target_language == 'en':
+            return response
         
-        translated_words = []
-        for word in text.split():
-            key = reverse_source.get(word.lower())
-            if key and key in target_dict:
-                translated_words.append(target_dict[key])
-            else:
-                translated_words.append(word)
+        translated_response = response.copy()
         
-        return ' '.join(translated_words)
+        # Translate recommendations
+        if 'recommendations' in response:
+            translated_recommendations = []
+            for rec in response['recommendations']:
+                translated_rec = self.translate_recommendation(rec, target_language)
+                translated_recommendations.append(translated_rec)
+            translated_response['recommendations'] = translated_recommendations
+        
+        # Translate explanation
+        if 'explanation' in response:
+            translated_response['explanation'] = self.translate_explanation(
+                response['explanation'], target_language
+            )
+        
+        # Translate next steps
+        if 'nextSteps' in response:
+            translated_steps = []
+            for step in response['nextSteps']:
+                translated_step = self.translate_recommendation(step, target_language)
+                translated_steps.append(translated_step)
+            translated_response['nextSteps'] = translated_steps
+        
+        return translated_response
+    
+    def translate_recommendation(self, recommendation: str, target_language: str) -> str:
+        """Translate a single recommendation"""
+        if target_language == 'hi':
+            # Simple translation mapping for common recommendations
+            translations = {
+                'Seek immediate medical attention': 'तुरंत चिकित्सा सहायता लें',
+                'Call ambulance': 'एम्बुलेंस बुलाएं',
+                'Go to nearest hospital': 'नजदीकी अस्पताल जाएं',
+                'Contact ASHA worker': 'आशा कार्यकर्ता से संपर्क करें',
+                'Visit PHC for checkup': 'जांच के लिए PHC जाएं',
+                'Rest and stay hydrated': 'आराम करें और पानी पिएं',
+                'Take prescribed medications': 'निर्धारित दवाएं लें',
+                'Monitor symptoms closely': 'लक्षणों पर नजर रखें'
+            }
+            
+            return translations.get(recommendation, recommendation)
+        
+        return recommendation
+    
+    def translate_explanation(self, explanation: str, target_language: str) -> str:
+        """Translate explanation text"""
+        if target_language == 'hi':
+            # Basic explanation translations
+            translations = {
+                'high risk': 'उच्च जोखिम',
+                'medium risk': 'मध्यम जोखिम',
+                'low risk': 'कम जोखिम',
+                'symptoms': 'लक्षण',
+                'require immediate attention': 'तुरंत ध्यान देने की आवश्यकता है',
+                'should be monitored': 'निगरानी की जानी चाहिए'
+            }
+            
+            translated = explanation
+            for english, hindi in translations.items():
+                translated = translated.replace(english, hindi)
+            
+            return translated
+        
+        return explanation
+    
+    def get_supported_languages(self) -> List[str]:
+        """Get list of supported languages"""
+        return ['en', 'hi', 'ta', 'te']
+    
+    def get_language_info(self) -> Dict:
+        """Get information about language support"""
+        return {
+            'supported_languages': self.get_supported_languages(),
+            'primary_languages': ['en', 'hi'],
+            'translation_pairs': len(self.translations['hi_to_en']),
+            'features': [
+                'symptom_translation',
+                'language_detection',
+                'response_translation',
+                'voice_processing'
+            ]
+        }

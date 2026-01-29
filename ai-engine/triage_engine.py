@@ -1,321 +1,340 @@
 import logging
-from datetime import datetime
-import json
+from typing import Dict, List, Any
+from datetime import datetime, timedelta
+import random
 
 logger = logging.getLogger(__name__)
 
 class TriageEngine:
+    """Intelligent triage decision engine for healthcare routing"""
+    
     def __init__(self):
-        # Triage rules based on medical protocols
+        # Triage decision rules
         self.triage_rules = {
-            'emergency': {
-                'min_score': 80,
-                'symptoms': [
-                    'chest_pain', 'difficulty_breathing', 'unconsciousness',
-                    'severe_bleeding', 'stroke_symptoms'
-                ],
-                'age_factors': {
-                    'infant': 1.5,  # 0-2 years
-                    'elderly': 1.3,  # 65+ years
-                    'adult': 1.0
-                }
+            'red': {
+                'urgency': 'emergency',
+                'max_wait_time_minutes': 0,
+                'recommended_facility': 'hospital',
+                'transport': 'ambulance',
+                'priority': 1
             },
-            'urgent': {
-                'min_score': 60,
-                'symptoms': [
-                    'high_fever', 'severe_headache', 'persistent_vomiting',
-                    'severe_abdominal_pain', 'dehydration'
-                ],
-                'age_factors': {
-                    'infant': 1.4,
-                    'elderly': 1.2,
-                    'adult': 1.0
-                }
+            'amber': {
+                'urgency': 'urgent',
+                'max_wait_time_minutes': 60,
+                'recommended_facility': 'phc',
+                'transport': 'self',
+                'priority': 2
             },
-            'semi_urgent': {
-                'min_score': 40,
-                'symptoms': [
-                    'fever', 'moderate_pain', 'persistent_cough',
-                    'diarrhea', 'vomiting'
-                ],
-                'age_factors': {
-                    'infant': 1.2,
-                    'elderly': 1.1,
-                    'adult': 1.0
-                }
-            },
-            'non_urgent': {
-                'min_score': 0,
-                'symptoms': [
-                    'mild_headache', 'runny_nose', 'sore_throat',
-                    'mild_cough', 'fatigue'
-                ],
-                'age_factors': {
-                    'infant': 1.1,
-                    'elderly': 1.0,
-                    'adult': 1.0
-                }
+            'green': {
+                'urgency': 'routine',
+                'max_wait_time_minutes': 240,
+                'recommended_facility': 'home_care',
+                'transport': 'self',
+                'priority': 3
             }
         }
         
-        # Medical history risk factors
-        self.risk_factors = {
-            'diabetes': 1.2,
-            'hypertension': 1.15,
-            'heart_disease': 1.3,
-            'asthma': 1.2,
-            'copd': 1.25,
-            'kidney_disease': 1.2,
-            'immunocompromised': 1.4,
-            'pregnancy': 1.3
+        # Facility capacity simulation
+        self.facility_status = {
+            'hospital': {'capacity': 0.7, 'wait_time': 30},
+            'phc': {'capacity': 0.5, 'wait_time': 15},
+            'chc': {'capacity': 0.6, 'wait_time': 20},
+            'clinic': {'capacity': 0.3, 'wait_time': 10}
         }
         
         logger.info("Triage engine initialized")
     
-    def make_decision(self, analysis, age=30, medical_history=None, vital_signs=None):
-        """Make triage decision based on analysis and patient factors"""
+    def make_decision(self, analysis_result: Dict, patient_age: int = 30) -> Dict:
+        """Make triage decision based on analysis result"""
         try:
-            base_score = analysis.get('riskScore', 50)
-            symptoms = analysis.get('symptoms', [])
+            risk_level = analysis_result.get('riskLevel', 'green')
+            risk_score = analysis_result.get('riskScore', 30)
+            symptoms = analysis_result.get('symptoms', [])
             
-            # Apply age adjustments
-            age_category = self._categorize_age(age)
-            adjusted_score = self._apply_age_adjustment(base_score, age_category, symptoms)
+            # Get base triage decision
+            base_decision = self.triage_rules[risk_level].copy()
             
-            # Apply medical history adjustments
-            if medical_history:
-                adjusted_score = self._apply_medical_history(adjusted_score, medical_history)
+            # Apply age-based adjustments
+            age_adjusted_decision = self._apply_age_adjustments(base_decision, patient_age, risk_level)
             
-            # Apply vital signs adjustments
-            if vital_signs:
-                adjusted_score = self._apply_vital_signs(adjusted_score, vital_signs)
+            # Apply symptom-specific adjustments
+            symptom_adjusted_decision = self._apply_symptom_adjustments(
+                age_adjusted_decision, symptoms, risk_score
+            )
             
-            # Determine triage category
-            triage_category = self._determine_triage_category(adjusted_score, symptoms)
+            # Determine best facility and estimated wait time
+            facility_recommendation = self._recommend_facility(
+                symptom_adjusted_decision, risk_level, patient_age
+            )
             
-            # Generate decision
-            decision = self._generate_decision(triage_category, adjusted_score, symptoms, age)
+            # Generate specific recommendations
+            recommendations = self._generate_triage_recommendations(
+                symptom_adjusted_decision, symptoms, risk_level
+            )
             
-            return decision
+            # Generate next steps
+            next_steps = self._generate_next_steps(
+                symptom_adjusted_decision, risk_level, facility_recommendation
+            )
+            
+            # Calculate estimated wait time
+            estimated_wait = self._calculate_wait_time(
+                facility_recommendation, risk_level, patient_age
+            )
+            
+            return {
+                'riskLevel': risk_level,
+                'riskScore': risk_score,
+                'urgency': symptom_adjusted_decision['urgency'],
+                'priority': symptom_adjusted_decision['priority'],
+                'recommendedFacility': facility_recommendation['facility_type'],
+                'facilityName': facility_recommendation['facility_name'],
+                'transportMode': symptom_adjusted_decision['transport'],
+                'estimatedWaitTime': estimated_wait,
+                'maxWaitTime': symptom_adjusted_decision['max_wait_time_minutes'],
+                'recommendations': recommendations,
+                'nextSteps': next_steps,
+                'explanation': self._generate_explanation(risk_level, risk_score, symptoms),
+                'confidence': analysis_result.get('confidence', 0.8),
+                'triage_timestamp': datetime.now().isoformat()
+            }
             
         except Exception as e:
             logger.error(f"Triage decision error: {str(e)}")
-            return self._default_decision()
+            return self._default_triage_decision()
     
-    def _categorize_age(self, age):
-        """Categorize age for risk assessment"""
-        if age <= 2:
-            return 'infant'
-        elif age <= 12:
-            return 'child'
-        elif age <= 18:
-            return 'adolescent'
-        elif age <= 65:
-            return 'adult'
-        else:
-            return 'elderly'
+    def _apply_age_adjustments(self, decision: Dict, age: int, risk_level: str) -> Dict:
+        """Apply age-based adjustments to triage decision"""
+        adjusted_decision = decision.copy()
+        
+        # Infants and elderly get higher priority
+        if age < 2:
+            # Infants - always urgent
+            if risk_level == 'green':
+                adjusted_decision['urgency'] = 'urgent'
+                adjusted_decision['priority'] = 2
+                adjusted_decision['max_wait_time_minutes'] = 30
+        elif age < 5:
+            # Young children - elevated priority
+            if risk_level == 'green':
+                adjusted_decision['max_wait_time_minutes'] = 120
+        elif age > 75:
+            # Elderly - elevated priority
+            if risk_level == 'green':
+                adjusted_decision['urgency'] = 'urgent'
+                adjusted_decision['priority'] = 2
+                adjusted_decision['max_wait_time_minutes'] = 90
+        elif age > 65:
+            # Senior citizens - slightly elevated
+            if risk_level == 'green':
+                adjusted_decision['max_wait_time_minutes'] = 180
+        
+        return adjusted_decision
     
-    def _apply_age_adjustment(self, score, age_category, symptoms):
-        """Apply age-based risk adjustments"""
-        # Find the highest applicable triage category
-        max_adjustment = 1.0
+    def _apply_symptom_adjustments(self, decision: Dict, symptoms: List[str], risk_score: int) -> Dict:
+        """Apply symptom-specific adjustments"""
+        adjusted_decision = decision.copy()
         
-        for category, rules in self.triage_rules.items():
-            if any(symptom in symptoms for symptom in rules['symptoms']):
-                adjustment = rules['age_factors'].get(age_category, 1.0)
-                max_adjustment = max(max_adjustment, adjustment)
-        
-        return score * max_adjustment
-    
-    def _apply_medical_history(self, score, medical_history):
-        """Apply medical history risk factors"""
-        total_adjustment = 1.0
-        
-        for condition in medical_history:
-            if condition in self.risk_factors:
-                total_adjustment *= self.risk_factors[condition]
-        
-        # Cap the adjustment to prevent extreme scores
-        total_adjustment = min(total_adjustment, 2.0)
-        
-        return score * total_adjustment
-    
-    def _apply_vital_signs(self, score, vital_signs):
-        """Apply vital signs adjustments"""
-        adjustment = 1.0
-        
-        # Temperature adjustments
-        temp = vital_signs.get('temperature')
-        if temp:
-            if temp > 103:  # Very high fever
-                adjustment *= 1.3
-            elif temp > 101:  # High fever
-                adjustment *= 1.2
-            elif temp < 95:  # Hypothermia
-                adjustment *= 1.4
-        
-        # Heart rate adjustments
-        heart_rate = vital_signs.get('heart_rate')
-        if heart_rate:
-            if heart_rate > 120:  # Tachycardia
-                adjustment *= 1.2
-            elif heart_rate < 50:  # Bradycardia
-                adjustment *= 1.3
-        
-        # Blood pressure adjustments
-        systolic_bp = vital_signs.get('systolic_bp')
-        if systolic_bp:
-            if systolic_bp > 180:  # Hypertensive crisis
-                adjustment *= 1.4
-            elif systolic_bp < 90:  # Hypotension
-                adjustment *= 1.3
-        
-        # Oxygen saturation
-        oxygen_sat = vital_signs.get('oxygen_saturation')
-        if oxygen_sat and oxygen_sat < 95:
-            adjustment *= 1.5
-        
-        return score * adjustment
-    
-    def _determine_triage_category(self, score, symptoms):
-        """Determine triage category based on score and symptoms"""
-        # Check for emergency symptoms first
-        emergency_symptoms = self.triage_rules['emergency']['symptoms']
-        if any(symptom in symptoms for symptom in emergency_symptoms) or score >= 80:
-            return 'emergency'
-        
-        # Check other categories by score
-        if score >= 60:
-            return 'urgent'
-        elif score >= 40:
-            return 'semi_urgent'
-        else:
-            return 'non_urgent'
-    
-    def _generate_decision(self, triage_category, score, symptoms, age):
-        """Generate triage decision with recommendations"""
-        decisions = {
-            'emergency': {
-                'action': 'emergency',
-                'priority': 'critical',
-                'timeframe': 'immediate',
-                'destination': 'emergency_department',
-                'transport': 'ambulance',
-                'monitoring': 'continuous'
-            },
-            'urgent': {
-                'action': 'phc_referral',
-                'priority': 'high',
-                'timeframe': 'within_2_hours',
-                'destination': 'phc_or_chc',
-                'transport': 'urgent_transport',
-                'monitoring': 'frequent'
-            },
-            'semi_urgent': {
-                'action': 'asha_visit',
-                'priority': 'medium',
-                'timeframe': 'within_24_hours',
-                'destination': 'community_care',
-                'transport': 'self_transport',
-                'monitoring': 'regular'
-            },
-            'non_urgent': {
-                'action': 'home_care',
-                'priority': 'low',
-                'timeframe': 'monitor_48_hours',
-                'destination': 'home',
-                'transport': 'none',
-                'monitoring': 'self_monitoring'
-            }
-        }
-        
-        base_decision = decisions[triage_category]
-        
-        # Add specific instructions
-        instructions = self._generate_instructions(triage_category, symptoms, age)
-        
-        return {
-            **base_decision,
-            'triage_score': int(score),
-            'triage_category': triage_category,
-            'instructions': instructions,
-            'follow_up': self._determine_follow_up(triage_category),
-            'red_flags': self._identify_red_flags(symptoms),
-            'timestamp': datetime.now().isoformat()
-        }
-    
-    def _generate_instructions(self, category, symptoms, age):
-        """Generate specific instructions based on triage category"""
-        instructions = {
-            'emergency': [
-                'Call 108 immediately for ambulance',
-                'Do not delay - go to nearest hospital',
-                'Keep patient calm and comfortable',
-                'Monitor breathing and consciousness'
-            ],
-            'urgent': [
-                'Visit PHC or CHC within 2 hours',
-                'Arrange transportation',
-                'Bring medical history if available',
-                'Monitor symptoms closely'
-            ],
-            'semi_urgent': [
-                'Contact ASHA worker for assessment',
-                'Schedule PHC visit if symptoms persist',
-                'Take prescribed medications',
-                'Rest and maintain hydration'
-            ],
-            'non_urgent': [
-                'Continue home care measures',
-                'Monitor symptoms for changes',
-                'Maintain good hygiene',
-                'Seek care if symptoms worsen'
-            ]
-        }
-        
-        base_instructions = instructions[category]
-        
-        # Add age-specific instructions
-        if age <= 5:
-            base_instructions.append('Keep child hydrated and comfortable')
-        elif age >= 65:
-            base_instructions.append('Monitor for complications due to age')
-        
-        return base_instructions
-    
-    def _determine_follow_up(self, category):
-        """Determine follow-up requirements"""
-        follow_ups = {
-            'emergency': 'hospital_admission',
-            'urgent': 'doctor_consultation_24h',
-            'semi_urgent': 'asha_follow_up_48h',
-            'non_urgent': 'self_monitoring_72h'
-        }
-        
-        return follow_ups[category]
-    
-    def _identify_red_flags(self, symptoms):
-        """Identify red flag symptoms that require immediate attention"""
-        red_flags = [
-            'chest_pain', 'difficulty_breathing', 'unconsciousness',
-            'severe_bleeding', 'stroke_symptoms', 'severe_abdominal_pain'
+        # Critical symptoms override risk level
+        critical_symptoms = [
+            'chest_pain', 'difficulty_breathing', 'severe_bleeding',
+            'unconsciousness', 'stroke_symptoms'
         ]
         
-        return [symptom for symptom in symptoms if symptom in red_flags]
+        if any(symptom in critical_symptoms for symptom in symptoms):
+            adjusted_decision['urgency'] = 'emergency'
+            adjusted_decision['priority'] = 1
+            adjusted_decision['transport'] = 'ambulance'
+            adjusted_decision['recommended_facility'] = 'hospital'
+            adjusted_decision['max_wait_time_minutes'] = 0
+        
+        # High fever in combination with other symptoms
+        if 'high_fever' in symptoms and len(symptoms) > 1:
+            if adjusted_decision['urgency'] == 'routine':
+                adjusted_decision['urgency'] = 'urgent'
+                adjusted_decision['priority'] = 2
+        
+        # Multiple symptoms increase urgency
+        if len(symptoms) >= 3 and risk_score > 50:
+            if adjusted_decision['urgency'] == 'routine':
+                adjusted_decision['urgency'] = 'urgent'
+                adjusted_decision['max_wait_time_minutes'] = min(
+                    adjusted_decision['max_wait_time_minutes'], 120
+                )
+        
+        return adjusted_decision
     
-    def _default_decision(self):
-        """Default decision when triage fails"""
+    def _recommend_facility(self, decision: Dict, risk_level: str, age: int) -> Dict:
+        """Recommend the best healthcare facility"""
+        facility_type = decision['recommended_facility']
+        
+        # Facility selection logic
+        if facility_type == 'hospital' or decision['urgency'] == 'emergency':
+            return {
+                'facility_type': 'hospital',
+                'facility_name': 'District Hospital',
+                'distance_km': random.uniform(5, 15),
+                'specialties': ['emergency', 'surgery', 'icu']
+            }
+        elif facility_type == 'phc' or decision['urgency'] == 'urgent':
+            return {
+                'facility_type': 'phc',
+                'facility_name': 'Primary Health Centre',
+                'distance_km': random.uniform(2, 8),
+                'specialties': ['general_medicine', 'maternal_care', 'vaccination']
+            }
+        else:
+            # Home care or ASHA visit
+            return {
+                'facility_type': 'home_care',
+                'facility_name': 'ASHA Worker Visit',
+                'distance_km': 0,
+                'specialties': ['basic_care', 'health_education', 'referral']
+            }
+    
+    def _generate_triage_recommendations(self, decision: Dict, symptoms: List[str], risk_level: str) -> List[str]:
+        """Generate specific triage recommendations"""
+        recommendations = []
+        
+        if decision['urgency'] == 'emergency':
+            recommendations.extend([
+                'Call emergency services (108) immediately',
+                'Do not delay seeking medical attention',
+                'Prepare patient for immediate transport',
+                'Keep patient calm and monitor vital signs'
+            ])
+        elif decision['urgency'] == 'urgent':
+            recommendations.extend([
+                'Seek medical attention within 1 hour',
+                'Contact nearest healthcare facility',
+                'Monitor symptoms closely',
+                'Prepare medical history and current medications'
+            ])
+        else:
+            recommendations.extend([
+                'Schedule appointment with healthcare provider',
+                'Continue home care measures',
+                'Monitor symptoms for any changes',
+                'Contact ASHA worker for guidance'
+            ])
+        
+        # Symptom-specific recommendations
+        if 'fever' in symptoms:
+            recommendations.append('Keep patient hydrated and cool')
+        
+        if 'vomiting' in symptoms or 'diarrhea' in symptoms:
+            recommendations.append('Maintain fluid balance and electrolytes')
+        
+        if 'chest_pain' in symptoms:
+            recommendations.append('Keep patient at rest, avoid physical exertion')
+        
+        return recommendations
+    
+    def _generate_next_steps(self, decision: Dict, risk_level: str, facility: Dict) -> List[str]:
+        """Generate next steps for patient care"""
+        next_steps = []
+        
+        if decision['urgency'] == 'emergency':
+            next_steps.extend([
+                'Immediate ambulance transport to hospital',
+                'Emergency department evaluation',
+                'Possible admission for treatment',
+                'Family notification and support'
+            ])
+        elif decision['urgency'] == 'urgent':
+            next_steps.extend([
+                f"Visit {facility['facility_name']} within 1 hour",
+                'Clinical examination by healthcare provider',
+                'Possible diagnostic tests',
+                'Treatment plan development'
+            ])
+        else:
+            next_steps.extend([
+                'ASHA worker consultation',
+                'Home-based care instructions',
+                'Follow-up in 24-48 hours',
+                'Return if symptoms worsen'
+            ])
+        
+        return next_steps
+    
+    def _calculate_wait_time(self, facility: Dict, risk_level: str, age: int) -> int:
+        """Calculate estimated wait time at facility"""
+        base_wait_time = self.facility_status.get(
+            facility['facility_type'], {'wait_time': 20}
+        )['wait_time']
+        
+        # Adjust for risk level
+        if risk_level == 'red':
+            return 0  # Immediate attention
+        elif risk_level == 'amber':
+            return max(5, base_wait_time // 2)  # Priority queue
+        else:
+            # Adjust for age
+            if age < 5 or age > 65:
+                return int(base_wait_time * 0.8)
+            else:
+                return base_wait_time
+    
+    def _generate_explanation(self, risk_level: str, risk_score: int, symptoms: List[str]) -> str:
+        """Generate explanation for triage decision"""
+        explanations = {
+            'red': f"High risk condition (score: {risk_score}) requires immediate medical attention. Symptoms indicate potential emergency.",
+            'amber': f"Moderate risk condition (score: {risk_score}) needs prompt medical evaluation. Symptoms require professional assessment.",
+            'green': f"Low risk condition (score: {risk_score}) can be managed with basic care. Symptoms are generally mild."
+        }
+        
+        base_explanation = explanations.get(risk_level, "Risk assessment completed.")
+        
+        if len(symptoms) > 2:
+            base_explanation += f" Multiple symptoms ({len(symptoms)}) present require careful monitoring."
+        
+        return base_explanation
+    
+    def _default_triage_decision(self) -> Dict:
+        """Default triage decision for error cases"""
         return {
-            'action': 'asha_visit',
-            'priority': 'medium',
-            'timeframe': 'within_24_hours',
-            'destination': 'community_care',
-            'transport': 'self_transport',
-            'monitoring': 'regular',
-            'triage_score': 50,
-            'triage_category': 'semi_urgent',
-            'instructions': ['Contact ASHA worker for assessment'],
-            'follow_up': 'asha_follow_up_48h',
-            'red_flags': [],
-            'timestamp': datetime.now().isoformat()
+            'riskLevel': 'amber',
+            'riskScore': 50,
+            'urgency': 'urgent',
+            'priority': 2,
+            'recommendedFacility': 'phc',
+            'facilityName': 'Primary Health Centre',
+            'transportMode': 'self',
+            'estimatedWaitTime': 30,
+            'maxWaitTime': 60,
+            'recommendations': ['Seek medical evaluation', 'Monitor symptoms'],
+            'nextSteps': ['Visit healthcare facility', 'Follow medical advice'],
+            'explanation': 'Unable to complete full risk assessment. Recommend medical evaluation.',
+            'confidence': 0.5,
+            'triage_timestamp': datetime.now().isoformat()
+        }
+    
+    def update_facility_status(self, facility_type: str, capacity: float, wait_time: int):
+        """Update facility status for dynamic triage decisions"""
+        if facility_type in self.facility_status:
+            self.facility_status[facility_type] = {
+                'capacity': capacity,
+                'wait_time': wait_time
+            }
+            logger.info(f"Updated {facility_type} status: capacity={capacity}, wait_time={wait_time}")
+    
+    def get_facility_status(self) -> Dict:
+        """Get current facility status"""
+        return self.facility_status.copy()
+    
+    def get_triage_statistics(self) -> Dict:
+        """Get triage engine statistics"""
+        return {
+            'total_rules': len(self.triage_rules),
+            'facility_types': list(self.facility_status.keys()),
+            'urgency_levels': ['emergency', 'urgent', 'routine'],
+            'priority_levels': [1, 2, 3],
+            'features': [
+                'age_based_adjustment',
+                'symptom_specific_routing',
+                'facility_recommendation',
+                'wait_time_estimation',
+                'dynamic_prioritization'
+            ]
         }

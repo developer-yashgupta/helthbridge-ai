@@ -1,0 +1,26 @@
+{
+  "processing_date": "2026-01-29T10:40:09.627441",
+  "total_samples": 720,
+  "risk_distribution": {
+    "red": 358,
+    "amber": 272,
+    "green": 90
+  },
+  "age_distribution": {
+    "infant": 80,
+    "child": 80,
+    "teen": 80,
+    "adult": 320,
+    "senior": 160
+  },
+  "gender_distribution": {
+    "male": 360,
+    "female": 360,
+    "unknown": 0
+  },
+  "data_sources": [
+    "symptom_disease",
+    "age_variations",
+    "gender_variations"
+  ]
+}

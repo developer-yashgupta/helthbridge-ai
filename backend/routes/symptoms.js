@@ -16,8 +16,8 @@ const mockSymptoms = {
 router.post('/analyze', async (req, res) => {
     try {
         const {
-            symptoms,
-            inputType, // 'voice', 'text', 'image'
+            symptoms = [],
+            inputType = 'text', // 'voice', 'text', 'image'
             language = 'en',
             patientAge,
             patientGender,
@@ -70,7 +70,7 @@ router.post('/analyze', async (req, res) => {
 });
 
 // Fallback rule-based analysis
-function fallbackAnalysis(symptoms) {
+function fallbackAnalysis(symptoms = []) {
     const highRiskSymptoms = ['chest_pain', 'difficulty_breathing', 'severe_bleeding'];
     const mediumRiskSymptoms = ['fever', 'persistent_cough', 'severe_headache'];
 

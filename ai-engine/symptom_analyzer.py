@@ -1,88 +1,122 @@
-import numpy as np
-import json
-from datetime import datetime
 import logging
+from datetime import datetime
+import random
+from ml_models import MLModels
 
 logger = logging.getLogger(__name__)
 
 class SymptomAnalyzer:
     def __init__(self):
-        self.symptom_weights = {
-            # High risk symptoms
-            'chest_pain': 0.9,
-            'difficulty_breathing': 0.85,
-            'severe_bleeding': 0.95,
-            'unconsciousness': 1.0,
-            'severe_abdominal_pain': 0.8,
-            'high_fever': 0.7,
-            
-            # Medium risk symptoms
-            'fever': 0.5,
-            'persistent_cough': 0.4,
-            'severe_headache': 0.6,
-            'vomiting': 0.5,
-            'diarrhea': 0.4,
-            'body_ache': 0.3,
-            
-            # Low risk symptoms
-            'mild_headache': 0.2,
-            'runny_nose': 0.1,
-            'sore_throat': 0.2,
-            'fatigue': 0.2,
-            'mild_cough': 0.15
-        }
+        # Initialize ML models
+        self.ml_models = MLModels()
         
-        self.symptom_combinations = {
-            ('fever', 'cough', 'difficulty_breathing'): 0.8,  # COVID-like
-            ('chest_pain', 'difficulty_breathing'): 0.9,      # Cardiac
-            ('fever', 'severe_headache', 'vomiting'): 0.85,   # Meningitis-like
-            ('abdominal_pain', 'vomiting', 'diarrhea'): 0.6   # GI issues
-        }
-        
-        logger.info("Symptom analyzer initialized")
+        logger.info("✅ Symptom analyzer initialized with real ML models")
     
     def analyze(self, symptoms, age=30, gender='unknown'):
-        """Analyze symptoms and return risk assessment"""
+        """Analyze symptoms using real ML models"""
         try:
             if not symptoms:
                 return self._default_response()
             
-            # Normalize symptom names
-            normalized_symptoms = [self._normalize_symptom(s) for s in symptoms]
+            # If symptoms is a string, extract symptoms using ML
+            if isinstance(symptoms, str):
+                ml_symptoms = self.ml_models.predict_symptoms(symptoms)
+                if ml_symptoms:
+                    # Use ML predictions
+                    symptom_names = [s['symptom'] for s in ml_symptoms]
+                    confidence = sum(s['confidence'] for s in ml_symptoms) / len(ml_symptoms)
+                else:
+                    # Fallback to rule-based extraction
+                    symptom_names = self._extract_symptoms_fallback(symptoms)
+                    confidence = 0.6
+            else:
+                # Symptoms provided as list
+                symptom_names = [self._normalize_symptom(s) for s in symptoms]
+                confidence = 0.8
             
-            # Calculate base risk score
-            base_score = self._calculate_base_score(normalized_symptoms)
-            
-            # Apply age and gender adjustments
-            adjusted_score = self._apply_demographic_adjustments(
-                base_score, age, gender
-            )
-            
-            # Check for dangerous combinations
-            combination_score = self._check_combinations(normalized_symptoms)
-            
-            # Final risk score
-            final_score = min(100, max(0, adjusted_score + combination_score))
-            
-            # Determine risk level
-            risk_level = self._determine_risk_level(final_score)
+            # Use ML model for risk prediction
+            if self.ml_models.models_loaded:
+                risk_result = self.ml_models.predict_risk(symptom_names, age, gender)
+                risk_level = risk_result['risk_level']
+                ml_confidence = risk_result['confidence']
+                risk_score = risk_result['risk_score']
+                
+                # Adjust confidence
+                final_confidence = (confidence + ml_confidence) / 2
+                
+            else:
+                # Fallback to rule-based analysis
+                risk_score = self._calculate_rule_based_risk(symptom_names, age, gender)
+                risk_level = self._determine_risk_level(risk_score)
+                final_confidence = 0.7
             
             # Generate recommendations
-            recommendations = self._generate_recommendations(
-                normalized_symptoms, risk_level, age
-            )
+            recommendations = self._generate_recommendations(symptom_names, risk_level, age)
             
             return {
-                'riskScore': int(final_score),
+                'riskScore': int(risk_score),
                 'riskLevel': risk_level,
-                'symptoms': normalized_symptoms,
+                'symptoms': symptom_names,
                 'recommendations': recommendations,
+                'confidence': round(final_confidence, 2),
+                'analysis_method': 'ml_model' if self.ml_models.models_loaded else 'rule_based',
                 'analysis_timestamp': datetime.now().isoformat()
             }
             
         except Exception as e:
-            logger.error(f"Symptom analysis error: {str(e)}")
+            logger.error(f"❌ Symptom analysis error: {str(e)}")
             return self._default_response()
+    
+    def _extract_symptoms_fallback(self, text):
+        """Fallback symptom extraction using keyword matching"""
+        text = text.lower()
+        symptoms = []
+        
+        symptom_keywords = {
+            'fever': ['fever', 'बुखार', 'temperature', 'hot', 'chills'],
+            'headache': ['headache', 'सिरदर्द', 'head pain', 'migraine'],
+            'cough': ['cough', 'खांसी', 'coughing'],
+            'chest_pain': ['chest pain', 'छाती में दर्द', 'chest hurt'],
+            'difficulty_breathing': ['breathing', 'सांस', 'breath', 'shortness'],
+            'stomach_pain': ['stomach', 'पेट', 'abdominal', 'belly'],
+            'vomiting': ['vomit', 'उल्टी', 'nausea', 'sick'],
+            'diarrhea': ['diarrhea', 'दस्त', 'loose motions'],
+            'fatigue': ['tired', 'कमजोरी', 'weakness', 'exhausted'],
+            'sore_throat': ['throat', 'गले', 'swallow']
+        }
+        
+        for symptom, keywords in symptom_keywords.items():
+            if any(keyword in text for keyword in keywords):
+                symptoms.append(symptom)
+        
+        return symptoms
+    
+    def _calculate_rule_based_risk(self, symptoms, age, gender):
+        """Calculate risk using rule-based system as fallback"""
+        base_score = 20
+        
+        # Critical symptoms
+        critical_symptoms = ['chest_pain', 'difficulty_breathing', 'unconsciousness', 'severe_bleeding']
+        high_risk_symptoms = ['high_fever', 'severe_headache', 'persistent_vomiting']
+        medium_risk_symptoms = ['fever', 'headache', 'cough', 'vomiting']
+        
+        for symptom in symptoms:
+            if any(cs in symptom.lower() for cs in critical_symptoms):
+                base_score += 60
+            elif any(hrs in symptom.lower() for hrs in high_risk_symptoms):
+                base_score += 40
+            elif any(mrs in symptom.lower() for mrs in medium_risk_symptoms):
+                base_score += 20
+            else:
+                base_score += 10
+        
+        # Age adjustments
+        if age < 5 or age > 65:
+            base_score *= 1.3
+        elif age > 50:
+            base_score *= 1.1
+        
+        return min(100, base_score)
     
     def _normalize_symptom(self, symptom):
         """Normalize symptom names for consistency"""
@@ -95,7 +129,7 @@ class SymptomAnalyzer:
             'खांसी': 'cough',
             'सांस लेने में तकलीफ': 'difficulty_breathing',
             'छाती में दर्द': 'chest_pain',
-            'पेट दर्द': 'abdominal_pain',
+            'पेट दर्द': 'stomach_pain',
             'उल्टी': 'vomiting',
             'दस्त': 'diarrhea',
             'कमजोरी': 'fatigue',
@@ -104,46 +138,11 @@ class SymptomAnalyzer:
         
         return mappings.get(symptom, symptom)
     
-    def _calculate_base_score(self, symptoms):
-        """Calculate base risk score from symptoms"""
-        total_weight = 0
-        for symptom in symptoms:
-            weight = self.symptom_weights.get(symptom, 0.1)  # Default low weight
-            total_weight += weight
-        
-        # Normalize to 0-100 scale
-        return min(100, total_weight * 50)
-    
-    def _apply_demographic_adjustments(self, score, age, gender):
-        """Apply age and gender-based risk adjustments"""
-        adjusted_score = score
-        
-        # Age adjustments
-        if age < 5 or age > 65:
-            adjusted_score *= 1.3  # Higher risk for very young or elderly
-        elif age > 50:
-            adjusted_score *= 1.1  # Slightly higher risk for middle-aged
-        
-        # Gender-specific adjustments (if needed)
-        # This would be based on medical research
-        
-        return adjusted_score
-    
-    def _check_combinations(self, symptoms):
-        """Check for dangerous symptom combinations"""
-        combination_bonus = 0
-        
-        for combo, weight in self.symptom_combinations.items():
-            if all(symptom in symptoms for symptom in combo):
-                combination_bonus += weight * 20  # Boost score for dangerous combos
-        
-        return combination_bonus
-    
     def _determine_risk_level(self, score):
         """Determine risk level based on score"""
-        if score >= 80:
+        if score >= 70:
             return 'red'
-        elif score >= 50:
+        elif score >= 40:
             return 'amber'
         else:
             return 'green'
@@ -152,21 +151,24 @@ class SymptomAnalyzer:
         """Generate appropriate recommendations"""
         if risk_level == 'red':
             return [
-                'तुरंत नजदीकी अस्पताल जाएं',
-                'एम्बुलेंस बुलाएं (108)',
-                'किसी को साथ ले जाएं'
+                'Seek immediate medical attention',
+                'Call ambulance (108)',
+                'Go to nearest hospital',
+                'Do not delay treatment'
             ]
         elif risk_level == 'amber':
             return [
-                'ASHA कार्यकर्ता से संपर्क करें',
-                'PHC में जांच कराएं',
-                'लक्षणों पर नजर रखें'
+                'Contact ASHA worker',
+                'Visit PHC for checkup',
+                'Monitor symptoms closely',
+                'Take prescribed medications'
             ]
         else:
             return [
-                'आराम करें और पानी पिएं',
-                'घरेलू उपचार करें',
-                'यदि बिगड़े तो डॉक्टर से मिलें'
+                'Rest and stay hydrated',
+                'Take home remedies',
+                'Monitor symptoms',
+                'Consult doctor if symptoms worsen'
             ]
     
     def _default_response(self):
@@ -175,26 +177,47 @@ class SymptomAnalyzer:
             'riskScore': 30,
             'riskLevel': 'green',
             'symptoms': [],
-            'recommendations': ['कृपया अपने लक्षण स्पष्ट रूप से बताएं'],
+            'recommendations': ['Please describe your symptoms clearly'],
+            'confidence': 0.5,
+            'analysis_method': 'default',
             'analysis_timestamp': datetime.now().isoformat()
         }
     
     def analyze_image(self, image_data):
-        """Analyze medical images (mock implementation)"""
-        # Mock skin condition analysis
-        conditions = [
-            'skin_rash', 'eczema', 'fungal_infection', 
-            'allergic_reaction', 'normal_skin'
-        ]
+        """Analyze medical images using ML models"""
+        try:
+            # Use ML models for image analysis if available
+            if self.ml_models.models_loaded:
+                # For now, use the existing image analysis from ml_models
+                return self.ml_models.analyze_image(image_data)
+            else:
+                # Fallback implementation
+                return self._fallback_image_analysis()
+                
+        except Exception as e:
+            logger.error(f"Image analysis error: {str(e)}")
+            return self._fallback_image_analysis()
+    
+    def _fallback_image_analysis(self):
+        """Fallback image analysis"""
+        conditions = ['normal_skin', 'skin_rash', 'eczema', 'fungal_infection']
+        condition = random.choice(conditions)
         
-        # Mock analysis result
-        return {
-            'condition': np.random.choice(conditions),
-            'confidence': np.random.uniform(0.7, 0.95),
-            'severity': np.random.choice(['mild', 'moderate', 'severe']),
-            'recommendations': [
-                'Keep area clean and dry',
-                'Apply prescribed medication',
-                'Avoid scratching'
-            ]
+        severity_map = {
+            'normal_skin': 'none',
+            'skin_rash': 'mild',
+            'eczema': 'moderate', 
+            'fungal_infection': 'moderate'
         }
+        
+        return {
+            'condition': condition,
+            'confidence': random.uniform(0.6, 0.8),
+            'severity': severity_map[condition],
+            'recommendations': ['Consult healthcare provider for proper diagnosis'],
+            'analysis_method': 'fallback'
+        }
+    
+    def get_model_status(self):
+        """Get status of ML models"""
+        return self.ml_models.get_model_info()

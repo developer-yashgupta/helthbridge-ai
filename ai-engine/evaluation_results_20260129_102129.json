@@ -1,0 +1,50 @@
+{
+  "overall_model_score": 0.891,
+  "evaluation_duration_seconds": 0.01,
+  "risk_prediction": {
+    "overall_accuracy": 0.733,
+    "precision": 0.775,
+    "recall": 0.733,
+    "f1_score": 0.725,
+    "score_accuracy": 0.888,
+    "mean_score_error": 11.17,
+    "max_score_error": 29.5,
+    "total_test_cases": 15,
+    "evaluation_timestamp": "2026-01-29T10:21:29.235156"
+  },
+  "symptom_classification": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "correctly_identified": 10,
+    "total_symptoms": 10,
+    "false_positives": 0,
+    "test_cases": 5
+  },
+  "demographic_factors": {
+    "age_factor_accuracy": 1.0,
+    "age_tests_passed": 4,
+    "total_age_tests": 4
+  },
+  "multilingual_support": {
+    "average_similarity": 0.985,
+    "similarity_scores": [
+      0.97,
+      1.0
+    ],
+    "multilingual_accuracy": 0.985
+  },
+  "evaluation_timestamp": "2026-01-29T10:21:29.239021",
+  "model_info": {
+    "models_available": [],
+    "is_trained": false,
+    "method": "rule_based",
+    "last_updated": "2026-01-29T10:21:29.239067",
+    "capabilities": [
+      "symptom_classification",
+      "risk_prediction",
+      "image_analysis",
+      "multilingual_support"
+    ]
+  }
+}
