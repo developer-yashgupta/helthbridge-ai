@@ -141,9 +141,17 @@ node verify-setup.js
    - AI Engine: http://localhost:5000/health
    - Frontend: http://localhost:3001
 
+<<<<<<< HEAD
 2. **User Flows**:
    - Landing page → Role selection → Login → Dashboard
    - Symptom analysis → AI recommendations → Healthcare routing
+=======
+### AI/ML
+- **Python + Flask** - AI service layer
+- **TensorFlow** - Machine learning models
+- **IndicBERT** - Multilingual NLP
+- **scikit-learn** - Classical ML algorithms
+>>>>>>> 625c1d08b102cca30de9e870a07dc91a032ff838
 
 3. **API Integration**:
    - OTP authentication
@@ -273,6 +281,24 @@ OFFLINE_MODE=true
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+<<<<<<< HEAD
+=======
+## 🆘 Support
+
+### Community Support
+- **GitHub Discussions** - Ask questions and share ideas
+- **Discord Server** - Real-time community chat
+- **Documentation** - Comprehensive guides and tutorials
+
+### Professional Support
+- **Email**: 
+- **Phone**: 
+- **Website**: https://healthbridge.ai
+
+### Security Issues
+Report security vulnerabilities to: security@healthbridge.ai
+
+>>>>>>> 625c1d08b102cca30de9e870a07dc91a032ff838
 ## 🙏 Acknowledgments
 
 - **Healthcare Workers**: For their invaluable feedback and requirements
@@ -292,4 +318,10 @@ Your HealthBridge AI platform is now ready for development and deployment. The c
 3. Test the AI features and user flows
 4. Customize for your specific healthcare requirements
 
+<<<<<<< HEAD
 **Happy Coding!** 🚀
+=======
+[Website](https://healthbridge.ai) • [Demo](DEMO.md) • [Docs](docs/) • [Community](https://discord.gg/healthbridge)
+
+</div>
+>>>>>>> 625c1d08b102cca30de9e870a07dc91a032ff838
