@@ -2,7 +2,7 @@
 
 A comprehensive AI-powered healthcare platform built with Next.js, Node.js, and Python, designed for rural healthcare management in India.
 
-## 🚀 Quick Start    
+## 🚀 Quick Start
 
 ### 1. **One-Click Setup**
 ```bash
