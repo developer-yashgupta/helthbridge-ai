@@ -72,7 +72,7 @@ export default function LandingPageClient() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-5 pb-10">
         <div className="text-center mb-8">
           <p className="text-lg text-muted-foreground">
-            Choose your role to access the dashboard (No login required for demo)
+            Choose your role to access the dashboard
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

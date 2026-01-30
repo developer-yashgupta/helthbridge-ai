@@ -209,7 +209,7 @@ class ApiService {
 
     // AI Engine APIs - Now using backend voice assistant with OpenAI
     async analyzeSymptoms(
-        request: SymptomAnalysisRequest
+        request: SymptomAnalysisRequest & { imageData?: string }
     ): Promise<ApiResponse<SymptomAnalysisResponse>> {
         // Use the test user ID we created, or create a default anonymous user
         const defaultUserId = '3dfd7ac0-8b57-46df-8232-9efe2750183c'; // Test user we created
@@ -219,6 +219,7 @@ class ApiService {
             userId: request.userId || defaultUserId,
             message: Array.isArray(request.symptoms) ? request.symptoms.join(', ') : request.symptoms,
             language: request.language || 'en',
+            imageData: request.imageData, // Add image data support
             patientInfo: {
                 age: request.patientAge,
                 gender: request.patientGender,

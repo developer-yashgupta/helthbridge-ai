@@ -152,21 +152,26 @@ export default function ConversationDisplay({
 
         {messages.map((message, index) => {
           const styles = getRoleStyles(message.role);
+          const isLatest = index === messages.length - 1;
 
           // Check if this message has critical severity for emergency warning
           const showEmergencyWarning =
             message.routing?.severity === "critical" && index === messages.length - 1;
 
           return (
-            <div key={message.id}>
+            <div 
+              key={message.id}
+              className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+              style={{ animationDelay: `${Math.min(index * 50, 300)}ms` }}
+            >
               <div
                 className={`flex gap-3 ${styles.container}`}
                 data-message-id={message.id}
                 data-message-role={message.role}
               >
-                {/* Avatar */}
+                {/* Avatar with bounce animation for latest message */}
                 {message.role !== "system" && (
-                  <Avatar className={`${styles.avatar} flex-shrink-0`}>
+                  <Avatar className={`${styles.avatar} flex-shrink-0 ${isLatest ? 'animate-in zoom-in duration-300' : ''}`}>
                     <AvatarFallback>
                       {message.role === "user" ? (
                         <User className="w-4 h-4" />
@@ -177,14 +182,16 @@ export default function ConversationDisplay({
                   </Avatar>
                 )}
 
-                {/* Message content */}
+                {/* Message content with enhanced styling */}
                 <div
                   className={`flex flex-col ${
                     message.role === "system" ? "w-full" : "max-w-[80%]"
                   }`}
                 >
                   <div
-                    className={`rounded-lg px-4 py-3 ${styles.bubble}`}
+                    className={`rounded-lg px-4 py-3 ${styles.bubble} ${
+                      isLatest ? 'shadow-md' : ''
+                    } transition-all duration-300 hover:shadow-lg`}
                     data-message-content
                   >
                     <p className="text-sm whitespace-pre-wrap break-words">
@@ -192,9 +199,9 @@ export default function ConversationDisplay({
                     </p>
                   </div>
 
-                  {/* Routing Information */}
+                  {/* Routing Information with slide-in animation */}
                   {message.routing && (
-                    <div className="mt-3">
+                    <div className="mt-3 animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: '200ms' }}>
                       <RoutingCard routing={message.routing} />
                     </div>
                   )}
@@ -221,26 +228,33 @@ export default function ConversationDisplay({
           );
         })}
 
-        {/* Loading indicator */}
+        {/* Enhanced Loading indicator with typing animation */}
         {isLoading && (
-          <div className="flex gap-3 justify-start" data-loading-indicator>
-            <Avatar className="bg-muted flex-shrink-0">
+          <div className="flex gap-3 justify-start animate-in fade-in slide-in-from-bottom-4 duration-500" data-loading-indicator>
+            <Avatar className="bg-gradient-to-br from-blue-100 to-purple-100 flex-shrink-0 animate-pulse">
               <AvatarFallback>
-                <Bot className="w-4 h-4" />
+                <Bot className="w-4 h-4 text-blue-600" />
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col max-w-[80%]">
-              <div className="rounded-lg px-4 py-3 bg-muted">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
-                  <span
-                    className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                    style={{ animationDelay: "0.1s" }}
-                  />
-                  <span
-                    className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                    style={{ animationDelay: "0.2s" }}
-                  />
+              <div className="rounded-lg px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" />
+                    <span
+                      className="w-2.5 h-2.5 bg-purple-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.15s" }}
+                    />
+                    <span
+                      className="w-2.5 h-2.5 bg-pink-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.3s" }}
+                    />
+                  </div>
+                  <span className="text-sm text-blue-700 font-medium animate-pulse">
+                    AI विश्लेषण कर रहा है...
+                  </span>
+                </div>
+              </div>
                 </div>
               </div>
             </div>

@@ -11,11 +11,11 @@ class GeminiService {
     this.model = null;
     this.config = {
       apiKey: process.env.GEMINI_API_KEY,
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-      maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS) || 1000,
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash', // Flash is faster
+      maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS) || 500, // Reduced for faster responses
       temperature: parseFloat(process.env.GEMINI_TEMPERATURE) || 0.7,
-      maxRetries: 3,
-      retryDelay: 1000,
+      maxRetries: 2, // Reduced retries for faster failure
+      retryDelay: 500, // Reduced delay
     };
 
     this.systemPrompt = this._createHealthcareSystemPrompt();
@@ -194,6 +194,87 @@ IMPORTANT:
 }
 
 Do not include any explanatory text, markdown formatting, or code blocks. Return ONLY the raw JSON object.`;
+
+    return prompt;
+  }
+
+  /**
+   * Analyze image using Gemini Vision API
+   * @param {string} imageData - Base64 encoded image
+   * @param {string} userMessage - User's message about the image
+   * @param {Array} conversationHistory - Previous messages
+   * @param {Object} userContext - User context
+   * @returns {string} AI analysis of the image
+   */
+  async analyzeImageWithVision(imageData, userMessage, conversationHistory = [], userContext = {}) {
+    if (!imageData || typeof imageData !== 'string') {
+      throw new Error('Invalid image data');
+    }
+
+    if (!this.isInitialized()) {
+      throw new Error('Gemini AI service not initialized');
+    }
+
+    try {
+      // Remove data URL prefix if present
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+
+      const prompt = this._buildImageAnalysisPrompt(userMessage, conversationHistory, userContext);
+
+      const result = await this._retryWithBackoff(async () => {
+        return await this.model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64Data
+            }
+          }
+        ]);
+      });
+
+      const response = result.response;
+      const text = response.text();
+
+      console.log('Gemini Vision analysis response:', text.substring(0, 500));
+
+      return text;
+    } catch (error) {
+      console.error('Gemini Vision analysis error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Build image analysis prompt
+   */
+  _buildImageAnalysisPrompt(userMessage, conversationHistory, userContext) {
+    let prompt = this.systemPrompt + '\n\n';
+    prompt += 'IMAGE ANALYSIS MODE:\n';
+    prompt += 'You are analyzing a medical image. Provide helpful health guidance based on what you see.\n\n';
+
+    if (userContext.age) {
+      prompt += `PATIENT AGE: ${userContext.age} years old\n`;
+    }
+    if (userContext.gender) {
+      prompt += `PATIENT GENDER: ${userContext.gender}\n`;
+    }
+
+    // Add conversation history
+    if (conversationHistory.length > 0) {
+      prompt += '\nCONVERSATION HISTORY:\n';
+      conversationHistory.slice(-3).forEach(msg => {
+        prompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
+      });
+    }
+
+    prompt += `\nUSER MESSAGE: ${userMessage}\n\n`;
+    prompt += `Analyze the image and provide:\n`;
+    prompt += `1. What you see in the image (2-3 sentences)\n`;
+    prompt += `2. If it's a medical condition (rash, wound, etc.), provide guidance\n`;
+    prompt += `3. If it's a prescription or report, summarize key points\n`;
+    prompt += `4. Recommend next steps\n\n`;
+    prompt += `Keep response SHORT (3-5 sentences). Be helpful and clear.`;
 
     return prompt;
   }

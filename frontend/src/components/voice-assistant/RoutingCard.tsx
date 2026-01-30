@@ -92,7 +92,7 @@ export default function RoutingCard({ routing }: RoutingCardProps) {
 
   return (
     <Card
-      className={`${severityConfig.bgColor} border-l-4 ${severityConfig.color.replace("bg-", "border-")}`}
+      className={`${severityConfig.bgColor} border-l-4 ${severityConfig.color.replace("bg-", "border-")} shadow-lg hover:shadow-xl transition-all duration-300 animate-in slide-in-from-left duration-500`}
       data-routing-card
       data-severity={severity}
       data-facility={facility}
@@ -101,12 +101,14 @@ export default function RoutingCard({ routing }: RoutingCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertCircle className={`w-5 h-5 ${severityConfig.textColor}`} />
-              <span>स्वास्थ्य सुविधा सिफारिश</span>
+              <div className={`p-2 rounded-full ${severityConfig.bgColor} animate-pulse`}>
+                <AlertCircle className={`w-5 h-5 ${severityConfig.textColor}`} />
+              </div>
+              <span className="animate-in fade-in slide-in-from-left duration-300">स्वास्थ्य सुविधा सिफारिश</span>
             </CardTitle>
           </div>
           <Badge
-            className={`${severityConfig.color} text-white`}
+            className={`${severityConfig.color} text-white shadow-md animate-in zoom-in duration-300`}
             data-severity-badge
           >
             {severityConfig.label}
@@ -115,23 +117,25 @@ export default function RoutingCard({ routing }: RoutingCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Facility Information */}
-        <div className="space-y-2">
-          <h4 className="font-semibold text-base" data-facility-name>
+        {/* Facility Information with stagger animation */}
+        <div className="space-y-2 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: '100ms' }}>
+          <h4 className="font-semibold text-base flex items-center gap-2" data-facility-name>
+            <span className="text-2xl">🏥</span>
             {getFacilityLabel()}
           </h4>
 
           {contactInfo && (
             <div className="space-y-2 text-sm">
               {contactInfo.name && (
-                <p className="font-medium" data-contact-name>
+                <p className="font-medium flex items-center gap-2 animate-in fade-in duration-300" data-contact-name style={{ animationDelay: '200ms' }}>
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                   {contactInfo.name}
                 </p>
               )}
 
               {contactInfo.address && (
-                <div className="flex items-start gap-2" data-contact-address>
-                  <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                <div className="flex items-start gap-2 p-2 rounded-md bg-white/50 hover:bg-white transition-colors duration-200 animate-in fade-in duration-300" data-contact-address style={{ animationDelay: '300ms' }}>
+                  <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
                   <span className="text-muted-foreground">
                     {contactInfo.address}
                   </span>
@@ -139,45 +143,50 @@ export default function RoutingCard({ routing }: RoutingCardProps) {
               )}
 
               {contactInfo.phone && (
-                <div className="flex items-center gap-2" data-contact-phone>
-                  <Phone className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                  <span className="text-muted-foreground">
+                <div className="flex items-center gap-2 p-2 rounded-md bg-white/50 hover:bg-white transition-colors duration-200 animate-in fade-in duration-300" data-contact-phone style={{ animationDelay: '400ms' }}>
+                  <Phone className="w-4 h-4 flex-shrink-0 text-green-600" />
+                  <span className="text-muted-foreground font-medium">
                     {contactInfo.phone}
                   </span>
                 </div>
               )}
 
               {contactInfo.distance && (
-                <p className="text-muted-foreground" data-contact-distance>
-                  दूरी: {contactInfo.distance}
+                <p className="text-muted-foreground flex items-center gap-2 animate-in fade-in duration-300" data-contact-distance style={{ animationDelay: '500ms' }}>
+                  <span className="text-lg">📍</span>
+                  दूरी: <span className="font-semibold">{contactInfo.distance}</span>
                 </p>
               )}
             </div>
           )}
         </div>
 
-        {/* Reasoning */}
+        {/* Reasoning with enhanced styling */}
         {reasoning && (
           <div
-            className="p-3 bg-white rounded-md border"
+            className="p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-md border-2 border-blue-200 animate-in fade-in slide-in-from-bottom duration-500"
             data-routing-reasoning
+            style={{ animationDelay: '600ms' }}
           >
-            <p className="text-sm text-muted-foreground">{reasoning}</p>
+            <p className="text-sm text-gray-700 flex items-start gap-2">
+              <span className="text-lg flex-shrink-0">💡</span>
+              <span>{reasoning}</span>
+            </p>
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons with hover effects */}
         {contactInfo && (
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: '700ms' }}>
             {contactInfo.phone && (
               <Button
                 onClick={handleCall}
                 variant="default"
                 size="sm"
-                className="flex-1"
+                className="flex-1 shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200"
                 data-call-button
               >
-                <Phone className="w-4 h-4 mr-2" />
+                <Phone className="w-4 h-4 mr-2 animate-pulse" />
                 कॉल करें
               </Button>
             )}
@@ -187,7 +196,7 @@ export default function RoutingCard({ routing }: RoutingCardProps) {
                 onClick={handleGetDirections}
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="flex-1 shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200"
                 data-directions-button
               >
                 <Navigation className="w-4 h-4 mr-2" />

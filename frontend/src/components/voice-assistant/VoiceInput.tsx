@@ -248,50 +248,89 @@ export default function VoiceInput({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Voice input button with visual indicator */}
-      <Button
-        onClick={toggleListening}
-        disabled={!isSupported}
-        size="lg"
-        className={`relative w-16 h-16 rounded-full transition-all duration-300 ${isListening
-          ? "bg-red-500 hover:bg-red-600 animate-pulse"
-          : "bg-primary hover:bg-primary/90"
+      {/* Voice input button with enhanced visual effects */}
+      <div className="relative">
+        {/* Animated background rings when listening */}
+        {isListening && (
+          <>
+            <span className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" style={{ animationDuration: '1s' }} />
+            <span className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} />
+            <span className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.6s' }} />
+          </>
+        )}
+        
+        <Button
+          onClick={toggleListening}
+          disabled={!isSupported}
+          size="lg"
+          className={`relative w-20 h-20 rounded-full transition-all duration-300 shadow-lg ${
+            isListening
+              ? "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 scale-110"
+              : "bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 hover:scale-105"
           }`}
-        aria-label={isListening ? "Stop recording" : "Start recording"}
-      >
-        {isListening ? (
-          <MicOff className="w-6 h-6" />
-        ) : (
-          <Mic className="w-6 h-6" />
-        )}
+          aria-label={isListening ? "Stop recording" : "Start recording"}
+        >
+          {isListening ? (
+            <MicOff className="w-8 h-8 animate-pulse" />
+          ) : (
+            <Mic className="w-8 h-8" />
+          )}
+        </Button>
 
-        {/* Pulsing ring indicator when listening */}
+        {/* Glowing effect when listening */}
         {isListening && (
-          <span className="absolute inset-0 rounded-full border-4 border-red-500 animate-ping opacity-75" />
+          <div className="absolute inset-0 rounded-full bg-red-500/30 blur-xl animate-pulse" />
         )}
-      </Button>
+      </div>
 
-      {/* Status text */}
-      <div className="text-center min-h-[24px]">
+      {/* Status text with icon animation */}
+      <div className="text-center min-h-[32px]">
         {isListening && (
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            सुन रहे हैं...
-          </p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm font-medium text-red-600 flex items-center gap-2 animate-pulse">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+              सुन रहे हैं...
+            </p>
+            {/* Audio wave visualization */}
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-red-500 rounded-full animate-pulse"
+                  style={{
+                    height: `${Math.random() * 20 + 10}px`,
+                    animationDelay: `${i * 0.1}s`,
+                    animationDuration: '0.6s'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         )}
         {!isSupported && (
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-destructive font-medium">
             वॉइस इनपुट उपलब्ध नहीं है
+          </p>
+        )}
+        {!isListening && isSupported && (
+          <p className="text-sm text-muted-foreground">
+            🎤 माइक पर टैप करें और बोलें
           </p>
         )}
       </div>
 
-      {/* Real-time transcript display */}
+      {/* Real-time transcript display with animation */}
       {interimTranscript && (
-        <div className="w-full max-w-md p-3 bg-muted rounded-lg">
-          <p className="text-sm text-muted-foreground italic">
-            {interimTranscript}
-          </p>
+        <div className="w-full max-w-md p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200 shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-start gap-2">
+            <Loader2 className="w-4 h-4 mt-1 text-blue-600 animate-spin flex-shrink-0" />
+            <p className="text-sm text-gray-700 font-medium">
+              {interimTranscript}
+            </p>
+          </div>
         </div>
       )}
     </div>

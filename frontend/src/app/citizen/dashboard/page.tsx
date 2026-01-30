@@ -82,7 +82,14 @@ const WelcomeCard = () => (
 const AIHealthQuery = ({ setResult }: { setResult: (result: AnalysisResult | null) => void }) => {
   const [symptoms, setSymptoms] = React.useState("");
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
-  const [chatHistory, setChatHistory] = React.useState<Array<{ type: 'user' | 'ai', message: string, timestamp: Date }>>([
+  const [isListening, setIsListening] = React.useState(false);
+  const [voiceError, setVoiceError] = React.useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = React.useState(false);
+  const [uploadedImage, setUploadedImage] = React.useState<File | null>(null);
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [chatHistory, setChatHistory] = React.useState<Array<{ type: 'user' | 'ai', message: string, timestamp: Date, image?: string }>>([
     {
       type: 'ai',
       message: "Hello! I'm your AI Health Assistant powered by advanced machine learning. I can analyze your symptoms and provide personalized health guidance. How are you feeling today?",
@@ -90,12 +97,208 @@ const AIHealthQuery = ({ setResult }: { setResult: (result: AnalysisResult | nul
     }
   ]);
 
-  const callAIEngine = async (userInput: string): Promise<AnalysisResult> => {
+  // Voice recognition setup
+  const recognitionRef = React.useRef<any>(null);
+  const speechSynthesisRef = React.useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Text-to-Speech function - automatically speaks AI responses
+  const speakText = (text: string) => {
+    if (typeof window === 'undefined') return;
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'hi-IN'; // Hindi
+    utterance.rate = 0.9; // Slightly slower for clarity
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      setIsSpeaking(false);
+    };
+
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  React.useEffect(() => {
+    // Initialize speech recognition
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'hi-IN'; // Hindi
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setSymptoms(transcript);
+          setIsListening(false);
+          setVoiceError(null);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setVoiceError('आवाज़ समझने में समस्या। कृपया फिर से प्रयास करें।');
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  // Handle image upload
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('कृपया एक वैध इमेज फ़ाइल चुनें');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('इमेज का साइज़ 5MB से कम होना चाहिए');
+      return;
+    }
+
+    setUploadedImage(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Remove uploaded image
+  const removeImage = () => {
+    setUploadedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Analyze image with Gemini Vision
+  const analyzeImage = async () => {
+    if (!uploadedImage) return;
+
+    setIsAnalyzingImage(true);
+
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Image = reader.result as string;
+
+        // Add user message with image
+        const userMessage = {
+          type: 'user' as const,
+          message: '📷 Image uploaded for analysis',
+          timestamp: new Date(),
+          image: base64Image
+        };
+
+        setChatHistory(prev => [...prev, userMessage]);
+
+        // Call AI with image
+        const imageAnalysisPrompt = `I've uploaded an image. Please analyze it and tell me what you see. If it's a medical image (rash, wound, prescription, report), provide relevant health guidance.`;
+
+        try {
+          const aiResult = await callAIEngine(imageAnalysisPrompt, base64Image);
+          setResult(aiResult);
+
+          const aiMessage = {
+            type: 'ai' as const,
+            message: aiResult.aiResponse || "I've analyzed the image. Please review the recommendations above.",
+            timestamp: new Date()
+          };
+
+          setChatHistory(prev => [...prev, aiMessage]);
+
+          // Speak the AI response
+          if (aiResult.aiResponse) {
+            speakText(aiResult.aiResponse);
+          }
+
+          // Clear image after analysis
+          removeImage();
+
+        } catch (error) {
+          console.error('Error analyzing image:', error);
+          const errorMessage = {
+            type: 'ai' as const,
+            message: "I'm sorry, I couldn't analyze the image. Please try again or describe your symptoms in text.",
+            timestamp: new Date()
+          };
+          setChatHistory(prev => [...prev, errorMessage]);
+          speakText(errorMessage.message);
+        }
+      };
+
+      reader.readAsDataURL(uploadedImage);
+
+    } catch (error) {
+      console.error('Error processing image:', error);
+    } finally {
+      setIsAnalyzingImage(false);
+    }
+  };
+
+  // Toggle voice listening
+  const toggleVoiceListening = () => {
+    if (!recognitionRef.current) {
+      setVoiceError('वॉइस इनपुट इस ब्राउज़र में उपलब्ध नहीं है');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        setVoiceError(null);
+      } catch (error) {
+        console.error('Failed to start recognition:', error);
+        setVoiceError('माइक्रोफोन एक्सेस नहीं मिला');
+      }
+    }
+  };
+
+  const callAIEngine = async (userInput: string, imageData?: string): Promise<AnalysisResult> => {
     try {
       // Call the Python AI engine using the existing API service
       const response = await apiService.analyzeSymptoms({
         symptoms: userInput,
-        inputType: 'text',
+        inputType: imageData ? 'image' : 'text',
         language: 'en',
         patientAge: 25,
         patientGender: 'unknown',
@@ -103,7 +306,8 @@ const AIHealthQuery = ({ setResult }: { setResult: (result: AnalysisResult | nul
           district: 'Unknown',
           block: 'Unknown',
           village: 'Unknown'
-        }
+        },
+        imageData: imageData // Pass image data if available
       });
 
       if (!response.success || !response.data) {
@@ -189,6 +393,11 @@ I'll be back online as soon as the AI engine is available. Thank you for your pa
       setChatHistory(prev => [...prev, aiMessage]);
       setSymptoms("");
 
+      // Speak the AI response automatically
+      if (aiResult.aiResponse) {
+        speakText(aiResult.aiResponse);
+      }
+
     } catch (error) {
       console.error('Error processing AI request:', error);
 
@@ -200,6 +409,9 @@ I'll be back online as soon as the AI engine is available. Thank you for your pa
       };
 
       setChatHistory(prev => [...prev, errorMessage]);
+      
+      // Speak error message automatically
+      speakText(errorMessage.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -211,6 +423,9 @@ I'll be back online as soon as the AI engine is available. Thank you for your pa
         <CardTitle className="flex items-center gap-2">
           🤖 AI Health Assistant
           <span className="text-sm font-normal text-green-600">● ML Powered</span>
+          {isSpeaking && (
+            <span className="text-sm font-normal text-blue-600 animate-pulse">🔊 बोल रहा है...</span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -223,6 +438,13 @@ I'll be back online as soon as the AI engine is available. Thank you for your pa
                   ? 'bg-blue-500 text-white'
                   : 'bg-white border shadow-sm'
                   }`}>
+                  {chat.image && (
+                    <img 
+                      src={chat.image} 
+                      alt="Uploaded" 
+                      className="max-w-full h-auto rounded-md mb-2 max-h-40 object-contain"
+                    />
+                  )}
                   <p className="text-sm whitespace-pre-wrap">{chat.message}</p>
                   <p className={`text-xs mt-1 ${chat.type === 'user' ? 'text-blue-100' : 'text-gray-500'
                     }`} suppressHydrationWarning>
@@ -246,22 +468,100 @@ I'll be back online as soon as the AI engine is available. Thank you for your pa
           <form onSubmit={handleSubmit}>
             <div className="space-y-3">
               <Label htmlFor="symptoms">Describe how you're feeling</Label>
+              {isListening && (
+                <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-md animate-pulse">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                  <span className="text-sm text-red-600 font-medium">सुन रहे हैं... बोलें</span>
+                </div>
+              )}
               <textarea
                 id="symptoms"
                 placeholder="Hi, I'm feeling tired and have a headache... (The AI will analyze your symptoms using machine learning)"
                 className="w-full min-h-[80px] p-3 border rounded-md resize-none"
                 value={symptoms}
                 onChange={(e) => setSymptoms(e.target.value)}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || isListening}
               />
 
+              {/* Voice Error Display */}
+              {voiceError && (
+                <div className="p-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
+                  {voiceError}
+                </div>
+              )}
+
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="relative p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="max-w-full h-auto rounded-md max-h-40 object-contain mx-auto"
+                  />
+                  <p className="text-xs text-blue-600 text-center mt-2">
+                    📷 Image ready for analysis
+                  </p>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" disabled={isAnalyzing}>
-                  <Icons.Mic /> Voice
+                <Button 
+                  type="button" 
+                  variant={isListening ? "default" : "outline"} 
+                  size="sm" 
+                  disabled={isAnalyzing || isAnalyzingImage}
+                  onClick={toggleVoiceListening}
+                  className={isListening ? "animate-pulse bg-red-500 hover:bg-red-600" : ""}
+                >
+                  <Icons.Mic /> {isListening ? "सुन रहे हैं..." : "Voice"}
                 </Button>
-                <Button type="button" variant="outline" size="sm" disabled={isAnalyzing}>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={isAnalyzing || isAnalyzingImage}
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Icons.Camera /> Photo
                 </Button>
+
+                {uploadedImage && (
+                  <Button 
+                    type="button" 
+                    variant="default" 
+                    size="sm" 
+                    disabled={isAnalyzingImage}
+                    onClick={analyzeImage}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isAnalyzingImage ? (
+                      <>
+                        <Icons.Loader /> Analyzing...
+                      </>
+                    ) : (
+                      <>🔍 Analyze Image</>
+                    )}
+                  </Button>
+                )}
               </div>
 
               <Button type="submit" size="lg" className="w-full" disabled={isAnalyzing || !symptoms.trim()}>
