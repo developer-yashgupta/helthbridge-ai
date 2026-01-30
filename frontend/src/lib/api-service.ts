@@ -1,7 +1,7 @@
 // API Service for HealthBridge frontend - integrates with existing backend and AI engine
 
-const API_BASE_URL = 'http://localhost:3000/api';
-const AI_ENGINE_URL = 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const AI_ENGINE_URL = process.env.NEXT_PUBLIC_AI_ENGINE_URL || 'http://localhost:5000';
 
 // Types for API responses
 export interface ApiResponse<T> {
@@ -72,6 +72,7 @@ export interface SymptomAnalysisResponse {
     extractedSymptoms: string[];
     analysisMethod: string;
     timestamp: string;
+    aiResponse?: string; // The main AI conversational response
 }
 
 export interface DiseasePrediction {
@@ -134,6 +135,10 @@ class ApiService {
         options: RequestInit = {}
     ): Promise<ApiResponse<T>> {
         try {
+            console.log('=== Making Request ===');
+            console.log('URL:', url);
+            console.log('Method:', options.method || 'GET');
+
             const response = await fetch(url, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -142,9 +147,16 @@ class ApiService {
                 ...options,
             });
 
+            console.log('=== Response Received ===');
+            console.log('Status:', response.status);
+            console.log('OK:', response.ok);
+            console.log('Status Text:', response.statusText);
+
             const data = await response.json();
+            console.log('Response data:', data);
 
             if (!response.ok) {
+                console.error('Response not OK:', response.status);
                 return {
                     success: false,
                     error: data.error || data.message || `HTTP ${response.status}`,
@@ -156,6 +168,8 @@ class ApiService {
                 data,
             };
         } catch (error) {
+            console.error('=== Request Error ===');
+            console.error('Error:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Network error',
@@ -193,14 +207,133 @@ class ApiService {
         });
     }
 
-    // AI Engine APIs (matching enhanced_app.py endpoints)
+    // AI Engine APIs - Now using backend voice assistant with OpenAI
     async analyzeSymptoms(
         request: SymptomAnalysisRequest
     ): Promise<ApiResponse<SymptomAnalysisResponse>> {
-        return this.request(`${AI_ENGINE_URL}/analyze`, {
+        // Use the test user ID we created, or create a default anonymous user
+        const defaultUserId = '3dfd7ac0-8b57-46df-8232-9efe2750183c'; // Test user we created
+
+        // Convert to voice assistant format
+        const voiceAssistantRequest = {
+            userId: request.userId || defaultUserId,
+            message: Array.isArray(request.symptoms) ? request.symptoms.join(', ') : request.symptoms,
+            language: request.language || 'en',
+            patientInfo: {
+                age: request.patientAge,
+                gender: request.patientGender,
+                location: request.location,
+                medicalHistory: [
+                    ...(request.chronicConditions || []),
+                    ...(request.allergies || []),
+                    ...(request.currentMedications || [])
+                ]
+            }
+        };
+
+        // Call voice assistant API
+        console.log('=== Calling Voice Assistant API ===');
+        console.log('Request URL:', `${API_BASE_URL}/voice-assistant/analyze`);
+        console.log('Request body:', voiceAssistantRequest);
+
+        const response = await this.request<any>(`${API_BASE_URL}/voice-assistant/analyze`, {
             method: 'POST',
-            body: JSON.stringify(request),
+            body: JSON.stringify(voiceAssistantRequest),
         });
+
+        console.log('=== API Response ===');
+        console.log('Response success:', response.success);
+        console.log('Response error:', response.error);
+        console.log('Response data:', response.data);
+        console.log('Full response:', JSON.stringify(response, null, 2));
+
+        if (!response.success) {
+            console.error('API call failed:', response.error);
+            return {
+                success: false,
+                error: response.error || 'Failed to analyze symptoms'
+            };
+        }
+
+        // The backend returns the data directly, not wrapped in a data field
+        const vaData = response.data;
+
+        console.log('=== Voice Assistant Data ===');
+        console.log('vaData:', vaData);
+        console.log('vaData.routing:', vaData?.routing);
+        console.log('vaData.response:', vaData?.response);
+
+        if (!vaData || !vaData.routing) {
+            console.error('Invalid response structure - missing routing data');
+            console.error('vaData is:', vaData);
+            return {
+                success: false,
+                error: 'Invalid response from server - missing routing data'
+            };
+        }
+
+        // Transform voice assistant response to expected format
+        const transformedData: SymptomAnalysisResponse = {
+            success: true,
+            userId: request.userId || defaultUserId,
+            riskLevel: vaData.routing.severity === 'critical' ? 'red' :
+                vaData.routing.severity === 'high' ? 'red' :
+                    vaData.routing.severity === 'medium' ? 'amber' : 'green',
+            riskScore: vaData.routing.severityScore,
+            confidence: 85, // Default confidence
+            diseasePredictions: [],
+            healthcareRouting: {
+                level: vaData.routing.facilityType,
+                facility: vaData.routing.facility ? {
+                    facility_id: vaData.routing.facility.id || '',
+                    name: vaData.routing.facility.name || '',
+                    level: vaData.routing.facilityType,
+                    location: {},
+                    services: [],
+                    contact_info: {
+                        phone: vaData.routing.facility.phone,
+                        address: vaData.routing.facility.address
+                    }
+                } : {} as any,
+                urgency: vaData.routing.severity === 'critical' ? 'critical' :
+                    vaData.routing.severity === 'high' ? 'urgent' : 'routine',
+                transport: vaData.routing.severity === 'critical' ? 'Ambulance' : 'Self',
+                estimated_time: vaData.routing.timeframe,
+                instructions: [vaData.routing.reasoning],
+                contact_numbers: vaData.routing.facility?.phone ? [vaData.routing.facility.phone] : []
+            },
+            medicationSuggestions: {
+                safe_medicines: [],
+                home_remedies: [],
+                warnings: [],
+                contraindications: []
+            },
+            // Use routing reasoning for recommendations, not the AI response
+            recommendations: vaData.routing.reasoning ? [vaData.routing.reasoning] : [],
+            followUpPlan: {
+                timeline: vaData.routing.timeframe,
+                next_check: vaData.routing.timeframe,
+                monitoring: vaData.routing.reasoning,
+                red_flags: []
+            },
+            historyFactors: {
+                age_factor: request.patientAge ? `Age: ${request.patientAge}` : 'Unknown',
+                chronic_conditions: request.chronicConditions || [],
+                current_medications: request.currentMedications?.length || 0,
+                previous_episodes: 0,
+                allergies: request.allergies?.length || 0
+            },
+            extractedSymptoms: Array.isArray(request.symptoms) ? request.symptoms : [request.symptoms],
+            analysisMethod: 'Gemini AI',
+            timestamp: new Date().toISOString(),
+            // Add the AI response as a separate field
+            aiResponse: vaData.response
+        };
+
+        return {
+            success: true,
+            data: transformedData
+        };
     }
 
     async getUserHistory(userId: string): Promise<ApiResponse<any>> {

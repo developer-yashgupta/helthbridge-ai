@@ -22,9 +22,10 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
-    },
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/components/ui/*": ["./src/components/ui/*"]
+    }
   },
   "include": [
     "next-env.d.ts", 
@@ -32,7 +33,8 @@
     "**/*.tsx", 
     ".next/types/**/*.ts",
     "src/types/**/*.ts",
-    "src/types/**/*.d.ts"
+    "src/types/**/*.d.ts",
+    "src/components/**/*.tsx"
   ],
   "exclude": ["node_modules"]
 }

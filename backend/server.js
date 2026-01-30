@@ -40,7 +40,20 @@ app.locals.db = pool;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+
+// CORS configuration - Allow frontend to connect
+app.use(cors({
+  origin: [
+    'http://localhost:3001',  // Frontend development server
+    'http://localhost:3000',  // Backend server
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -52,11 +65,13 @@ app.use('/api/triage', require('./routes/triage'));
 app.use('/api/resources', require('./routes/resources'));
 app.use('/api/asha', require('./routes/asha'));
 app.use('/api/teleconsult', require('./routes/teleconsult'));
+app.use('/api/voice-assistant', require('./routes/voiceAssistant'));
+app.use('/api/worker-notifications', require('./routes/workerNotifications'));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     service: 'HealthBridge AI Backend'
   });
@@ -65,7 +80,7 @@ app.get('/health', (req, res) => {
 // Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });

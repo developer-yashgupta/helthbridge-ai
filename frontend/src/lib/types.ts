@@ -18,6 +18,13 @@ export const roleDisplayNames: Record<Role, string> = {
   admin: 'Administrator'
 };
 
+export const roleDescriptions: Record<Role, string> = {
+  citizen: 'Access your health dashboard and AI-powered symptom analysis',
+  asha: 'Manage community health and assist citizens',
+  clinical: 'Access clinical tools and patient management',
+  admin: 'System administration and oversight'
+};
+
 export interface User {
   id: string;
   phone: string;

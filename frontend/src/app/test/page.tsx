@@ -121,11 +121,11 @@ export default function TestPage() {
         <div className="text-center space-y-4">
           <h3 className="text-lg font-semibold">🚀 Next.js App Working!</h3>
           <div className="flex justify-center gap-4">
-            <Button asChild>
-              <a href="/">Landing Page</a>
+            <Button onClick={() => window.location.href = '/'}>
+              Landing Page
             </Button>
-            <Button variant="outline" asChild>
-              <a href="/citizen/dashboard">Dashboard</a>
+            <Button variant="outline" onClick={() => window.location.href = '/citizen/dashboard'}>
+              Dashboard
             </Button>
           </div>
         </div>

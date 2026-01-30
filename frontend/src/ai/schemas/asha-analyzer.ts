@@ -6,7 +6,7 @@
  * - VisitHistorySchema
  * - PatientProfileSchema
  */
-import {z} from 'genkit';
+import { z } from 'genkit';
 
 export const VisitHistorySchema = z.object({
   date: z.string(),
@@ -36,3 +36,5 @@ export const AshaAnalyzerOutputSchema = z.object({
   risk: z.enum(["Low", "Medium", "High"]).describe("The assessed risk level for the patient."),
 });
 export type AshaAnalyzerOutput = z.infer<typeof AshaAnalyzerOutputSchema>;
+
+export type VisitHistory = z.infer<typeof VisitHistorySchema>;

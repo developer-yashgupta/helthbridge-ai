@@ -39,7 +39,6 @@ declare global {
     interface ProcessEnv {
       NEXT_PUBLIC_API_URL?: string;
       NEXT_PUBLIC_AI_ENGINE_URL?: string;
-      NODE_ENV: 'development' | 'production' | 'test';
     }
   }
 }
