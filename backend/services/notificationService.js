@@ -153,10 +153,10 @@ class NotificationService {
       };
     } catch (error) {
       logger.error('Error delivering notification:', error);
-      
+
       // Implement retry logic
       await this._scheduleRetry(notificationId);
-      
+
       throw error;
     }
   }
@@ -259,8 +259,8 @@ class NotificationService {
       critical: 'अत्यंत गंभीर'
     };
 
-    const symptomsText = Array.isArray(symptoms) 
-      ? symptoms.join(', ') 
+    const symptomsText = Array.isArray(symptoms)
+      ? symptoms.join(', ')
       : symptoms;
 
     const title = severity === 'critical'
@@ -299,7 +299,7 @@ class NotificationService {
       // Integration with existing SMS service
       // For now, just log the SMS that would be sent
       logger.info(`SMS would be sent to ${notification.phone_number}: ${notification.title}`);
-      
+
       // TODO: Integrate with actual SMS service (otpService or dedicated SMS gateway)
       // const smsService = require('./otpService');
       // await smsService.sendSMS(notification.phone_number, notification.message);
@@ -346,7 +346,7 @@ class NotificationService {
          WHERE id = $1`,
         [notificationId]
       );
-      
+
       logger.info(`Retry scheduled for notification: ${notificationId}`);
     } catch (error) {
       logger.error('Error scheduling retry:', error);

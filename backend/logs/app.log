@@ -183,3 +183,9 @@
 {"timestamp":"2026-01-30T04:02:53.836Z","level":"INFO","message":"Message added: 7539d53b-d4a5-464d-9d18-c2d543e2630b to conversation: 5dc6d80a-4af8-460e-b63d-f825761d92f2","pid":15772,"service":"healthbridge-backend"}
 {"timestamp":"2026-01-30T04:03:37.394Z","level":"INFO","message":"Message added: 56b2fbb5-db2b-4db6-9834-bea61951925c to conversation: 5dc6d80a-4af8-460e-b63d-f825761d92f2","pid":15772,"service":"healthbridge-backend"}
 {"timestamp":"2026-01-30T04:03:37.401Z","level":"INFO","message":"Voice assistant analysis completed for user: 3dfd7ac0-8b57-46df-8232-9efe2750183c","pid":15772,"service":"healthbridge-backend"}
+{"timestamp":"2026-01-30T04:56:54.008Z","level":"INFO","message":"Conversation created: 5e957523-05ba-47fd-a929-82c85c713cb9 for user: 3dfd7ac0-8b57-46df-8232-9efe2750183c","pid":27404,"service":"healthbridge-backend"}
+{"timestamp":"2026-01-30T04:56:54.025Z","level":"INFO","message":"Retrieved conversation: 5e957523-05ba-47fd-a929-82c85c713cb9 with 0 messages","pid":27404,"service":"healthbridge-backend"}
+{"timestamp":"2026-01-30T04:56:54.049Z","level":"INFO","message":"Auto-generated title for conversation: 5e957523-05ba-47fd-a929-82c85c713cb9","pid":27404,"service":"healthbridge-backend"}
+{"timestamp":"2026-01-30T04:56:54.050Z","level":"INFO","message":"Message added: b54facab-9dd7-4135-b721-e73a145b810f to conversation: 5e957523-05ba-47fd-a929-82c85c713cb9","pid":27404,"service":"healthbridge-backend"}
+{"timestamp":"2026-01-30T04:57:31.574Z","level":"INFO","message":"Message added: 2a82525a-4cbd-472d-83ce-7e4400887c7e to conversation: 5e957523-05ba-47fd-a929-82c85c713cb9","pid":27404,"service":"healthbridge-backend"}
+{"timestamp":"2026-01-30T04:57:31.582Z","level":"INFO","message":"Voice assistant analysis completed for user: 3dfd7ac0-8b57-46df-8232-9efe2750183c","pid":27404,"service":"healthbridge-backend"}

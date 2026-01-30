@@ -1,0 +1,9 @@
+{
+    "userId": "3dfd7ac0-8b57-46df-8232-9efe2750183c",
+    "message": "I have fever and cough",
+    "language": "en",
+    "patientInfo": {
+        "age": 25,
+        "gender": "male"
+    }
+}

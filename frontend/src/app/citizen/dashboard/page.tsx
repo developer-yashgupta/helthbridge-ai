@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiService } from "@/lib/api-service";
+import { GoogleTranslate } from "@/components/GoogleTranslate";
 
 // Simple icons as text
 const Icons = {
@@ -14,17 +15,9 @@ const Icons = {
   Languages: () => <span>🌐</span>,
   Mic: () => <span>🎤</span>,
   Camera: () => <span>📷</span>,
-  FileAudio: () => <span>🎵</span>,
-  Video: () => <span>📹</span>,
-  Stethoscope: () => <span>🩺</span>,
-  Upload: () => <span>📤</span>,
   UserCircle: () => <span>👤</span>,
-  MapPin: () => <span>📍</span>,
   AlertTriangle: () => <span>⚠️</span>,
   HeartPulse: () => <span>💓</span>,
-  ChevronRight: () => <span>▶️</span>,
-  Download: () => <span>⬇️</span>,
-  Siren: () => <span>🚨</span>,
   Loader: () => <span>⏳</span>,
 };
 
@@ -50,9 +43,7 @@ const CitizenDashboardHeader = () => {
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
           <nav className="flex items-center space-x-1">
-            <Button variant="ghost" size="icon" aria-label="Switch Language">
-              <Icons.Languages />
-            </Button>
+            <GoogleTranslate />
             <Button variant="ghost" size="icon" aria-label="Notifications">
               <Icons.Bell />
             </Button>
@@ -157,7 +148,6 @@ const AIHealthQuery = ({ setResult }: { setResult: (result: AnalysisResult | nul
 **What you should do:**
 - If this is an emergency or you have severe symptoms, please seek immediate medical attention or call emergency services
 - For non-urgent symptoms, please try again in a few moments
-- You can use the quick actions on the right to find nearby healthcare facilities
 
 **Alternative options:**
 - Contact an ASHA worker in your area
@@ -230,8 +220,8 @@ I'll be back online as soon as the AI engine is available. Thank you for your pa
             {chatHistory.map((chat, index) => (
               <div key={index} className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] p-3 rounded-lg ${chat.type === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white border shadow-sm'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white border shadow-sm'
                   }`}>
                   <p className="text-sm whitespace-pre-wrap">{chat.message}</p>
                   <p className={`text-xs mt-1 ${chat.type === 'user' ? 'text-blue-100' : 'text-gray-500'
@@ -286,39 +276,6 @@ I'll be back online as soon as the AI engine is available. Thank you for your pa
             </div>
           </form>
         </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// Quick Actions Component
-const QuickActions = () => {
-  const actions = [
-    { icon: Icons.Stethoscope, label: "Symptom Check", isEmergency: false },
-    { icon: Icons.Upload, label: "Upload Report", isEmergency: false },
-    { icon: Icons.UserCircle, label: "My Profile", isEmergency: false },
-    { icon: Icons.MapPin, label: "Nearby PHC/SC", isEmergency: false },
-    { icon: Icons.Siren, label: "Emergency Help", isEmergency: true },
-  ];
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
-      <CardContent className="grid grid-cols-3 gap-2 text-center">
-        {actions.map(action => (
-          <Button
-            key={action.label}
-            variant="ghost"
-            className={`flex flex-col h-auto items-center justify-center gap-1 p-2 text-center ${action.isEmergency ? 'bg-red-50 hover:bg-red-100' : ''
-              }`}
-          >
-            <div className={`flex items-center justify-center w-12 h-12 rounded-full ${action.isEmergency ? 'bg-red-100' : 'bg-gray-100'
-              }`}>
-              <action.icon />
-            </div>
-            <span className="text-xs font-medium text-wrap">{action.label}</span>
-          </Button>
-        ))}
       </CardContent>
     </Card>
   );
@@ -517,7 +474,6 @@ export default function CitizenDashboard() {
               {aiResult && <AIResult result={aiResult} />}
             </div>
             <div className="lg:col-span-2 space-y-6">
-              <QuickActions />
               <VitalsCard />
               <HealthTips />
             </div>
